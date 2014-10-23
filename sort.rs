@@ -81,6 +81,30 @@ fn find_pivot<T>(v: &[T], compare: &mut |&T, &T| -> Ordering) -> uint {
     }
 }
 
+fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Ordering) -> uint {
+    if (*compare)(&v[a], &v[b]) == Less {
+        if (*compare)(&v[b], &v[c]) == Less {
+            b
+        } else {
+            if (*compare)(&v[a], &v[c]) == Less {
+                c
+            } else {
+                a
+            }
+        }
+    } else {
+        if (*compare)(&v[b], &v[c]) == Greater {
+            b
+        } else {
+            if (*compare)(&v[a], &v[c]) == Greater {
+                c
+            } else {
+                a
+            }
+        }
+    }
+}
+
 /// Partitions elements, using the element at `pivot` as pivot.
 /// After partitioning, the array looks as following:
 /// <<<<<==>>>
@@ -130,30 +154,6 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
     while i < n {
         v.swap(a + i, b + i);
         i += 1;
-    }
-}
-
-fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Ordering) -> uint {
-    if (*compare)(&v[a], &v[b]) == Less {
-        if (*compare)(&v[b], &v[c]) == Less {
-            b
-        } else {
-            if (*compare)(&v[a], &v[c]) == Less {
-                c
-            } else {
-                a
-            }
-        }
-    } else {
-        if (*compare)(&v[b], &v[c]) == Greater {
-            b
-        } else {
-            if (*compare)(&v[a], &v[c]) == Greater {
-                c
-            } else {
-                a
-            }
-        }
     }
 }
 
