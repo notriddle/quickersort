@@ -3,9 +3,18 @@
 extern crate test;
 
 use std::cmp::min;
+use std::mem::{size_of, zeroed, replace};
+use std::ptr;
 
-/// For up to this many elements, insertion sort will be used
-const INSERTION_THRESHOLD: uint = 32;
+/// For up to this many small elements, insertion sort will be used
+const INSERTION_SMALL_THRESHOLD: uint = 32;
+
+/// For up to this many big elements, insertion sort will be used
+const INSERTION_LARGE_THRESHOLD: uint = 16;
+
+/// Element size in bytes from which a element is considered "large" for the purposes
+/// of insertion sort threshold selection;
+const LARGE_ELEM_THRESHOLD: uint = 16;
 
 /// For more than this many elements (but fewer than `MEDIAN_MEDIAN_THRESHOLD`) the pivot
 /// selection is done by median of 3. For fewer elements, the middle one is chosen.
@@ -26,13 +35,15 @@ fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
         return;
     }
 
-    if n <= INSERTION_THRESHOLD {
+    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
+            || n <= INSERTION_SMALL_THRESHOLD {
         insertion_sort(v, compare);
         return;
     }
 
     if rec >= heapsort_depth {
-        println!("[{} >= {}] heapsort not implemented, quicksorting {} elements", rec, heapsort_depth, n);
+        heapsort(v, compare);
+        return;
     }
 
     let pivot = find_pivot(v, compare);
@@ -147,47 +158,110 @@ fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Orde
     }
 }
 
-// From "Bit Twiddling Hacks" by Sean Eron Anderson
-fn log2_32(mut v: u32) -> u32 {
-    const DE_BRUIJN: &'static [u32] = &[
-        0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
-        8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
-    ];
-
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    DE_BRUIJN[((v * 0x07C4ACDD) >> 27) as uint]
+fn heapsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+    heapify(v, compare);
+    let mut end = v.len();
+    while end > 0 {
+        end -= 1;
+        v.swap(0, end);
+        siftdown_range(v, 0, end, compare);
+    }
 }
 
-// Based on the same idea, http://stackoverflow.com/a/11398748/616150
-fn log2_64(mut v: u64) -> u32 {
-    const DE_BRUIJN: &'static [u32] = &[
-        63,  0, 58,  1, 59, 47, 53,  2,
-        60, 39, 48, 27, 54, 33, 42,  3,
-        61, 51, 37, 40, 49, 18, 28, 20,
-        55, 30, 34, 11, 43, 14, 22,  4,
-        62, 57, 46, 52, 38, 26, 32, 41,
-        50, 36, 17, 19, 29, 10, 13, 21,
-        56, 45, 25, 31, 35, 16,  9, 12,
-        44, 24, 15,  8, 23,  7,  6,  5
-    ];
-
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v |= v >> 32;
-    DE_BRUIJN[(((v - (v >> 1))*0x07EDD5E59A4E28C2) >> 58) as uint]
+fn heapify<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+    let mut n = v.len() / 2;
+    while n > 0 {
+        n -= 1;
+        siftdown(v, n, compare)
+    }
 }
 
+fn siftup<T>(v: &mut [T], start: uint, mut pos: uint, compare: &mut |&T, &T| -> Ordering) {
+    unsafe {
+        let new = replace(&mut v[pos], zeroed());
+
+        while pos > start {
+            let parent = (pos - 1) >> 1;
+            if (*compare)(&new, &v[parent]) == Greater {
+                let x = replace(&mut v[parent], zeroed());
+                ptr::write(&mut v[pos], x);
+                pos = parent;
+                continue
+            }
+            break
+        }
+        ptr::write(&mut v[pos], new);
+    }
+}
+
+fn siftdown_range<T>(v: &mut [T], mut pos: uint, end: uint, compare: &mut |&T, &T| -> Ordering) {
+    unsafe {
+        let start = pos;
+        let new = replace(&mut v[pos], zeroed());
+
+        let mut child = 2 * pos + 1;
+        while child < end {
+            let right = child + 1;
+            if right < end && (*compare)(&v[child], &v[right]) != Greater {
+                child = right;
+            }
+            let x = replace(&mut v[child], zeroed());
+            ptr::write(&mut v[pos], x);
+            pos = child;
+            child = 2 * pos + 1;
+        }
+
+        ptr::write(&mut v[pos], new);
+        siftup(v, start, pos, compare);
+    }
+}
+
+fn siftdown<T>(v: &mut [T], pos: uint, compare: &mut |&T, &T| -> Ordering) {
+    let len = v.len();
+    siftdown_range(v, pos, len, compare);
+}
 
 fn log2(v: uint) -> u32 {
+    // From "Bit Twiddling Hacks" by Sean Eron Anderson
+    fn log2_32(mut v: u32) -> u32 {
+        const DE_BRUIJN: &'static [u32] = &[
+            0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
+            8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
+        ];
+
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        DE_BRUIJN[((v * 0x07C4ACDD) >> 27) as uint]
+    }
+
+    // Based on the same idea, http://stackoverflow.com/a/11398748/616150
+    fn log2_64(mut v: u64) -> u32 {
+        const DE_BRUIJN: &'static [u32] = &[
+            63,  0, 58,  1, 59, 47, 53,  2,
+            60, 39, 48, 27, 54, 33, 42,  3,
+            61, 51, 37, 40, 49, 18, 28, 20,
+            55, 30, 34, 11, 43, 14, 22,  4,
+            62, 57, 46, 52, 38, 26, 32, 41,
+            50, 36, 17, 19, 29, 10, 13, 21,
+            56, 45, 25, 31, 35, 16,  9, 12,
+            44, 24, 15,  8, 23,  7,  6,  5
+        ];
+
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v |= v >> 32;
+        DE_BRUIJN[(((v - (v >> 1))*0x07EDD5E59A4E28C2) >> 58) as uint]
+    }
+
     // TODO Replace with some intrinsic
-    if ::std::mem::size_of::<uint>() == 8 {
+    if v == 0 { return 0; }
+    if size_of::<uint>() == 8 {
         log2_64(v as u64)
     } else {
         log2_32(v as u32)
@@ -196,36 +270,57 @@ fn log2(v: uint) -> u32 {
 
 #[cfg(test)]
 mod test_sort {
-    use super::{sort, partition};
+    use super::{introsort, partition, insertion_sort, heapsort, log2};
     use std::rand::{Rng, weak_rng};
 
+    fn introsort_wrapper<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+       let heapsort_depth = (3 * log2(v.len())) / 2;
+       introsort(v, compare, 0, heapsort_depth);
+    }
+
     #[test]
-    fn test_sort() {
+    fn test_introsort() {
+        do_test_sort(&introsort_wrapper::<uint>);
+    }
+
+    #[test]
+    fn test_heapsort() {
+        do_test_sort(&heapsort::<uint>);
+    }
+
+    #[test]
+    fn test_insertion_sort() {
+        do_test_sort(&insertion_sort::<uint>);
+    }
+
+    fn do_test_sort(sort: &fn(&mut [uint], &mut |&uint, &uint| -> Ordering)) {
+        let mut cmp = |a: &uint, b: &uint| a.cmp(b);
+        let mut cmp_rev = |a: &uint, b: &uint| b.cmp(a);
         for len in range(4u, 25) {
             for _ in range(0i, 100) {
-                let mut v = weak_rng().gen_iter::<uint>().take(len)
+                let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| x as uint)
                                         .collect::<Vec<uint>>();
                 let mut v1 = v.clone();
 
-                //println!("{}", v);
-                sort(v[mut], |a, b| a.cmp(b));
-                //println!("{}", v);
+                println!("{}", v);
+                (*sort)(v[mut], &mut cmp);
+                println!("{}", v);
                 assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                sort(v1.as_mut_slice(), |a, b| a.cmp(b));
+                (*sort)(v1[mut], &mut cmp);
                 assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                sort(v1.as_mut_slice(), |a, b| b.cmp(a));
+                (*sort)(v1[mut], &mut cmp_rev);
                 assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
             }
         }
 
         // shouldn't fail/crash
         let mut v: [uint, .. 0] = [];
-        sort(v.as_mut_slice(), |a, b| a.cmp(b));
+        (*sort)(v[mut], &mut cmp);
 
         let mut v = [0xDEADBEEFu];
-        sort(v.as_mut_slice(), |a, b| a.cmp(b));
+        (*sort)(v[mut], &mut cmp);
         assert!(v == [0xDEADBEEF]);
     }
 
