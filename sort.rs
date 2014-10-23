@@ -5,24 +5,23 @@ extern crate test;
 use std::cmp::min;
 
 /// For up to this many elements, insertion sort will be used
-const INSERTION_THRESHOLD: uint = 16;
+const INSERTION_THRESHOLD: uint = 32;
 
 /// For more than this many elements (but fewer than `MEDIAN_MEDIAN_THRESHOLD`) the pivot
 /// selection is done by median of 3. For fewer elements, the middle one is chosen.
-const MEDIAN_THRESHOLD: uint = 30;
+const MEDIAN_THRESHOLD: uint = 64;
 
 /// For more than this many elements, median of 3 median-of-3 will be used for pivot selection.
-const MEDIAN_MEDIAN_THRESHOLD: uint = 180;
+const MEDIAN_MEDIAN_THRESHOLD: uint = 256;
 
-fn sort<T: ::std::fmt::Show>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
-    let heapsort_depth = 2 * log2(v.len());
+pub fn sort<T>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
+    let heapsort_depth = (3 * log2(v.len())) / 2;
     introsort(v, &mut compare, 0, heapsort_depth);
 }
 
-fn introsort<T: ::std::fmt::Show>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
+fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
                                   heapsort_depth: u32) {
     let n = v.len();
-    //println!("{}", v);
     if n <= 1 {
         return;
     }
@@ -33,7 +32,7 @@ fn introsort<T: ::std::fmt::Show>(v: &mut [T], compare: &mut |&T, &T| -> Orderin
     }
 
     if rec >= heapsort_depth {
-        println!("heapsort not implemented, quicksorting {} elements", v.len());
+        println!("[{} >= {}] heapsort not implemented, quicksorting {} elements", rec, heapsort_depth, n);
     }
 
     let pivot = find_pivot(v, compare);
@@ -390,5 +389,39 @@ mod bench {
             sort(v[mut], |a, b| a.cmp(b));
         });
         b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
+    }
+
+    #[bench]
+    fn sort_huge(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        let n = 100_000;
+        let mut v = rng.gen_iter::<int>().take(n).collect::<Vec<int>>();
+        b.iter(|| {
+            rng.shuffle(v[mut]);
+            sort(v[mut], |a, b| a.cmp(b));
+        });
+        b.bytes = (n * mem::size_of::<int>()) as u64;
+    }
+
+    #[bench]
+    fn sort_partially_sorted(b: &mut Bencher) {
+        fn partially_sort<T: Ord>(v: &mut [T]) {
+            let s = v.len() / 100;
+            if s == 0 { return; }
+            let mut sorted = true;
+            for c in v.chunks_mut(s) {
+                if sorted { sort(c[mut], |a, b| a.cmp(b)); }
+                sorted = !sorted;
+            }
+        }
+        let mut rng = weak_rng();
+        let n = 10_000;
+        let mut v = rng.gen_iter::<int>().take(n).collect::<Vec<int>>();
+        b.iter(|| {
+            rng.shuffle(v[mut]);
+            partially_sort(v[mut]);
+            sort(v[mut], |a, b| a.cmp(b));
+        });
+        b.bytes = (n * mem::size_of::<int>()) as u64;
     }
 }
