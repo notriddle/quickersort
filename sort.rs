@@ -4,15 +4,23 @@ extern crate test;
 
 use std::cmp::min;
 
-const INSERTION_THRESHOLD: uint = 13;
+/// For up to this many elements, insertion sort will be used
+const INSERTION_THRESHOLD: uint = 16;
+
+/// For more than this many elements (but fewer than `MEDIAN_MEDIAN_THRESHOLD`) the pivot
+/// selection is done by median of 3. For fewer elements, the middle one is chosen.
 const MEDIAN_THRESHOLD: uint = 30;
+
+/// For more than this many elements, median of 3 median-of-3 will be used for pivot selection.
 const MEDIAN_MEDIAN_THRESHOLD: uint = 180;
 
 fn sort<T: ::std::fmt::Show>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
-    introsort(v, &mut compare, 0);
+    let heapsort_depth = 2 * log2(v.len());
+    introsort(v, &mut compare, 0, heapsort_depth);
 }
 
-fn introsort<T: ::std::fmt::Show>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32) {
+fn introsort<T: ::std::fmt::Show>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
+                                  heapsort_depth: u32) {
     let n = v.len();
     //println!("{}", v);
     if n <= 1 {
@@ -24,10 +32,14 @@ fn introsort<T: ::std::fmt::Show>(v: &mut [T], compare: &mut |&T, &T| -> Orderin
         return;
     }
 
+    if rec >= heapsort_depth {
+        println!("heapsort not implemented, quicksorting {} elements", v.len());
+    }
+
     let pivot = find_pivot(v, compare);
     let (l, r) = partition(v, pivot, compare);
-    if l > 0 { introsort(v[mut ..l], compare, rec + 1); }
-    if r > 0 { introsort(v[mut n - r..], compare, rec + 1); }
+    if l > 0 { introsort(v[mut ..l], compare, rec + 1, heapsort_depth); }
+    if r > 0 { introsort(v[mut n - r..], compare, rec + 1, heapsort_depth); }
 }
 
 fn insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
@@ -133,6 +145,53 @@ fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Orde
                 a
             }
         }
+    }
+}
+
+// From "Bit Twiddling Hacks" by Sean Eron Anderson
+fn log2_32(mut v: u32) -> u32 {
+    const DE_BRUIJN: &'static [u32] = &[
+        0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
+        8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
+    ];
+
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    DE_BRUIJN[((v * 0x07C4ACDD) >> 27) as uint]
+}
+
+// Based on the same idea, http://stackoverflow.com/a/11398748/616150
+fn log2_64(mut v: u64) -> u32 {
+    const DE_BRUIJN: &'static [u32] = &[
+        63,  0, 58,  1, 59, 47, 53,  2,
+        60, 39, 48, 27, 54, 33, 42,  3,
+        61, 51, 37, 40, 49, 18, 28, 20,
+        55, 30, 34, 11, 43, 14, 22,  4,
+        62, 57, 46, 52, 38, 26, 32, 41,
+        50, 36, 17, 19, 29, 10, 13, 21,
+        56, 45, 25, 31, 35, 16,  9, 12,
+        44, 24, 15,  8, 23,  7,  6,  5
+    ];
+
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v |= v >> 32;
+    DE_BRUIJN[(((v - (v >> 1))*0x07EDD5E59A4E28C2) >> 58) as uint]
+}
+
+
+fn log2(v: uint) -> u32 {
+    // TODO Replace with some intrinsic
+    if ::std::mem::size_of::<uint>() == 8 {
+        log2_64(v as u64)
+    } else {
+        log2_32(v as u32)
     }
 }
 
