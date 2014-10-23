@@ -28,8 +28,7 @@ pub fn sort<T>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
     introsort(v, &mut compare, 0, heapsort_depth);
 }
 
-fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
-                                  heapsort_depth: u32) {
+fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
     let n = v.len();
     if n <= 1 {
         return;
@@ -41,7 +40,7 @@ fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32,
         return;
     }
 
-    if rec >= heapsort_depth {
+    if rec > heapsort_depth {
         heapsort(v, compare);
         return;
     }
@@ -383,7 +382,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(5).collect::<Vec<u64>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 5 * mem::size_of::<u64>() as u64;
     }
@@ -393,7 +392,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
@@ -403,7 +402,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
@@ -412,7 +411,7 @@ mod bench {
     fn sort_sorted(b: &mut Bencher) {
         let mut v = Vec::from_fn(10000, |i| i);
         b.iter(|| {
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
@@ -425,7 +424,7 @@ mod bench {
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(5)
                            .collect::<Vec<BigSortable>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 5 * mem::size_of::<BigSortable>() as u64;
     }
@@ -436,7 +435,7 @@ mod bench {
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(100)
                            .collect::<Vec<BigSortable>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 100 * mem::size_of::<BigSortable>() as u64;
     }
@@ -447,7 +446,7 @@ mod bench {
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(10000)
                            .collect::<Vec<BigSortable>>();
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = 10000 * mem::size_of::<BigSortable>() as u64;
     }
@@ -456,7 +455,7 @@ mod bench {
     fn sort_big_sorted(b: &mut Bencher) {
         let mut v = Vec::from_fn(10000u, |i| (i, i, i, i));
         b.iter(|| {
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
@@ -472,7 +471,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(||{
             rng.shuffle(v[mut]);
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
@@ -481,7 +480,7 @@ mod bench {
     fn sort_equals(b: &mut Bencher) {
         let mut v = Vec::from_elem(1000, 1u);
         b.iter(|| {
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
@@ -493,7 +492,7 @@ mod bench {
         let mut v = rng.gen_iter::<int>().take(n).collect::<Vec<int>>();
         b.iter(|| {
             rng.shuffle(v[mut]);
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (n * mem::size_of::<int>()) as u64;
     }
@@ -505,7 +504,7 @@ mod bench {
             if s == 0 { return; }
             let mut sorted = true;
             for c in v.chunks_mut(s) {
-                if sorted { sort(c[mut], |a, b| a.cmp(b)); }
+                if sorted { sort(c[mut], cmp); }
                 sorted = !sorted;
             }
         }
@@ -515,8 +514,10 @@ mod bench {
         b.iter(|| {
             rng.shuffle(v[mut]);
             partially_sort(v[mut]);
-            sort(v[mut], |a, b| a.cmp(b));
+            sort(v[mut], cmp);
         });
         b.bytes = (n * mem::size_of::<int>()) as u64;
     }
+
+    fn cmp<T: Ord>(a: &T, b: &T) -> Ordering { a.cmp(b) }
 }
