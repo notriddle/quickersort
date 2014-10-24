@@ -26,12 +26,15 @@ const MEDIAN_MEDIAN_THRESHOLD: uint = 256;
 pub fn sort<T>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
     if maybe_insertion_sort(v, &mut compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
-    introsort(v, &mut compare, 0, heapsort_depth);
+    do_introsort(v, &mut compare, 0, heapsort_depth);
 }
 
 fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
     if maybe_insertion_sort(v, compare) { return; }
+    do_introsort(v, compare, rec, heapsort_depth);
+}
 
+fn do_introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
     if rec > heapsort_depth {
         heapsort(v, compare);
         return;
