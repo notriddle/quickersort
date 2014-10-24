@@ -24,21 +24,13 @@ const MEDIAN_THRESHOLD: uint = 64;
 const MEDIAN_MEDIAN_THRESHOLD: uint = 256;
 
 pub fn sort<T>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
+    if maybe_insertion_sort(v, &mut compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
     introsort(v, &mut compare, 0, heapsort_depth);
 }
 
 fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
-    let n = v.len();
-    if n <= 1 {
-        return;
-    }
-
-    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
-            || n <= INSERTION_SMALL_THRESHOLD {
-        insertion_sort(v, compare);
-        return;
-    }
+    if maybe_insertion_sort(v, compare) { return; }
 
     if rec > heapsort_depth {
         heapsort(v, compare);
@@ -47,8 +39,23 @@ fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heaps
 
     let pivot = find_pivot(v, compare);
     let (l, r) = partition(v, pivot, compare);
+    let n = v.len();
     if l > 0 { introsort(v[mut ..l], compare, rec + 1, heapsort_depth); }
     if r > 0 { introsort(v[mut n - r..], compare, rec + 1, heapsort_depth); }
+}
+
+fn maybe_insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) -> bool {
+    let n = v.len();
+    if n <= 1 {
+        return true;
+    }
+
+    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
+            || n <= INSERTION_SMALL_THRESHOLD {
+        insertion_sort(v, compare);
+        return true;
+    }
+    return false;
 }
 
 fn insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
