@@ -379,7 +379,7 @@ mod test_sort {
 
 #[cfg(test)]
 mod bench {
-    use super::sort;
+    use super::{heapsort, insertion_sort, sort};
     use std::rand::{weak_rng, Rng};
     use std::mem;
     use test::Bencher;
@@ -524,6 +524,36 @@ mod bench {
             sort(v[mut], cmp);
         });
         b.bytes = (n * mem::size_of::<int>()) as u64;
+    }
+
+    #[bench]
+    fn sort_random_large_heapsort(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
+            heapsort(v[mut], &mut |a: &u64, b| a.cmp(b));
+        });
+        b.bytes = 10000 * mem::size_of::<u64>() as u64;
+    }
+
+    #[bench]
+    fn sort_random_medium_insertion_sort(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
+            insertion_sort(v[mut], &mut |a: &u64, b| a.cmp(b));
+        });
+        b.bytes = 100 * mem::size_of::<u64>() as u64;
+    }
+
+    #[bench]
+    fn sort_random_medium_heapsort(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        b.iter(|| {
+            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
+            heapsort(v[mut], &mut |a: &u64, b| a.cmp(b));
+        });
+        b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
 
     fn cmp<T: Ord>(a: &T, b: &T) -> Ordering { a.cmp(b) }
