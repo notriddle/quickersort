@@ -63,7 +63,7 @@ fn insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
     let n = v.len();
     while i < n {
         let mut j = i;
-        while j > 0 && (*compare)(&v[j-1], &v[j]) == Greater {
+        while j > 0 && unsafe { (*compare)(v.unsafe_get(j-1), v.unsafe_get(j)) } == Greater {
             v.swap(j, j-1);
             j -= 1;
         }
@@ -124,7 +124,7 @@ fn partition<T>(v: &mut [T], pivot: uint, compare: &mut |&T, &T| -> Ordering) ->
     v.swap(0, pivot);
     loop {
         while b <= c {
-            let r = (*compare)(&v[b], &v[0]);
+            let r = unsafe { (*compare)(v.unsafe_get(b), v.unsafe_get(0)) };
             if r == Greater { break; }
             if r == Equal {
                 v.swap(a, b);
@@ -133,7 +133,7 @@ fn partition<T>(v: &mut [T], pivot: uint, compare: &mut |&T, &T| -> Ordering) ->
             b += 1;
         }
         while c >= b {
-            let r = (*compare)(&v[c], &v[0]);
+            let r = unsafe { (*compare)(v.unsafe_get(c), v.unsafe_get(0)) };
             if r == Less { break; }
             if r == Equal {
                 v.swap(c, d);
