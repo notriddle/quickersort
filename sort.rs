@@ -1,4 +1,7 @@
 #![feature(slicing_syntax)]
+#![feature(overloaded_calls)]
+#![feature(unboxed_closures)]
+#![feature(macro_rules)]
 
 extern crate test;
 
@@ -23,23 +26,24 @@ const MEDIAN_THRESHOLD: uint = 64;
 /// For more than this many elements, median of 3 median-of-3 will be used for pivot selection.
 const MEDIAN_MEDIAN_THRESHOLD: uint = 256;
 
-pub fn sort_by<T>(v: &mut [T], mut compare: |&T, &T| -> Ordering) {
-    if maybe_insertion_sort(v, &mut compare) { return; }
+
+pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+    if maybe_insertion_sort(v, compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
-    do_introsort(v, &mut compare, 0, heapsort_depth);
+    do_introsort(v, compare, 0, heapsort_depth);
 }
 
 #[inline]
 pub fn sort<T: Ord>(v: &mut [T]) {
-    sort_by(v, |a: &T, b| a.cmp(b));
+    sort_by(v, &|&: a: &T, b| a.cmp(b));
 }
 
-fn introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
+fn introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     if maybe_insertion_sort(v, compare) { return; }
     do_introsort(v, compare, rec, heapsort_depth);
 }
 
-fn do_introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, heapsort_depth: u32) {
+fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     if rec > heapsort_depth {
         heapsort(v, compare);
         return;
@@ -52,7 +56,7 @@ fn do_introsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering, rec: u32, he
     if r > 0 { introsort(v[mut n - r..], compare, rec + 1, heapsort_depth); }
 }
 
-fn maybe_insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) -> bool {
+fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) -> bool {
     let n = v.len();
     if n <= 1 {
         return true;
@@ -66,12 +70,12 @@ fn maybe_insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) -> b
     return false;
 }
 
-fn insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
     while i < n {
         let mut j = i;
-        while j > 0 && unsafe { (*compare)(v.unsafe_get(j-1), v.unsafe_get(j)) } == Greater {
+        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
             v.swap(j, j-1);
             j -= 1;
         }
@@ -79,7 +83,7 @@ fn insertion_sort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
     }
 }
 
-fn find_pivot<T>(v: &[T], compare: &mut |&T, &T| -> Ordering) -> uint {
+fn find_pivot<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], compare: &C) -> uint {
     let n = v.len();
     let mid = n / 2;
     if n < MEDIAN_THRESHOLD {
@@ -96,22 +100,22 @@ fn find_pivot<T>(v: &[T], compare: &mut |&T, &T| -> Ordering) -> uint {
     }
 }
 
-fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Ordering) -> uint {
-    if (*compare)(&v[a], &v[b]) == Less {
-        if (*compare)(&v[b], &v[c]) == Less {
+fn median3<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, c: uint, compare: &C) -> uint {
+    if compare_idxs_safe(v, a, b, compare) == Less {
+        if compare_idxs_safe(v, b, c, compare) == Less {
             b
         } else {
-            if (*compare)(&v[a], &v[c]) == Less {
+            if compare_idxs_safe(v, a, c, compare) == Less {
                 c
             } else {
                 a
             }
         }
     } else {
-        if (*compare)(&v[b], &v[c]) == Greater {
+        if compare_idxs_safe(v, b, c, compare) == Greater {
             b
         } else {
-            if (*compare)(&v[a], &v[c]) == Greater {
+            if compare_idxs_safe(v, a, c, compare) == Greater {
                 c
             } else {
                 a
@@ -124,7 +128,7 @@ fn median3<T>(v: &[T], a: uint, b: uint, c: uint, compare: &mut |&T, &T| -> Orde
 /// After partitioning, the array looks as following:
 /// <<<<<==>>>
 /// Return (number of < elements, number of > elements)
-fn partition<T>(v: &mut [T], pivot: uint, compare: &mut |&T, &T| -> Ordering) -> (uint, uint)  {
+fn partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C) -> (uint, uint)  {
     let mut a = 0;
     let mut b = a;
     let mut c = v.len() - 1;
@@ -132,7 +136,7 @@ fn partition<T>(v: &mut [T], pivot: uint, compare: &mut |&T, &T| -> Ordering) ->
     v.swap(0, pivot);
     loop {
         while b <= c {
-            let r = unsafe { (*compare)(v.unsafe_get(b), v.unsafe_get(0)) };
+            let r = unsafe { compare_idxs(v, b, 0, compare) };
             if r == Greater { break; }
             if r == Equal {
                 v.swap(a, b);
@@ -141,7 +145,7 @@ fn partition<T>(v: &mut [T], pivot: uint, compare: &mut |&T, &T| -> Ordering) ->
             b += 1;
         }
         while c >= b {
-            let r = unsafe { (*compare)(v.unsafe_get(c), v.unsafe_get(0)) };
+            let r = unsafe { compare_idxs(v, c, 0, compare) };
             if r == Less { break; }
             if r == Equal {
                 v.swap(c, d);
@@ -172,7 +176,7 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
     }
 }
 
-fn heapsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
     while end > 0 {
@@ -182,7 +186,7 @@ fn heapsort<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
     }
 }
 
-fn heapify<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
+fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut n = v.len() / 2;
     while n > 0 {
         n -= 1;
@@ -190,13 +194,16 @@ fn heapify<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
     }
 }
 
-fn siftup<T>(v: &mut [T], start: uint, mut pos: uint, compare: &mut |&T, &T| -> Ordering) {
+fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
+    use std::mem::{transmute};
+
     unsafe {
         let new = replace(&mut v[pos], zeroed());
 
         while pos > start {
             let parent = (pos - 1) >> 1;
-            if (*compare)(&new, &v[parent]) == Greater {
+            // TODO: Get rid of transmute when high-rank lifetimes work
+            if compare(transmute(&new), transmute(v.unsafe_get(parent))) == Greater {
                 let x = replace(&mut v[parent], zeroed());
                 ptr::write(&mut v[pos], x);
                 pos = parent;
@@ -208,7 +215,7 @@ fn siftup<T>(v: &mut [T], start: uint, mut pos: uint, compare: &mut |&T, &T| -> 
     }
 }
 
-fn siftdown_range<T>(v: &mut [T], mut pos: uint, end: uint, compare: &mut |&T, &T| -> Ordering) {
+fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
     unsafe {
         let start = pos;
         let new = replace(&mut v[pos], zeroed());
@@ -216,7 +223,7 @@ fn siftdown_range<T>(v: &mut [T], mut pos: uint, end: uint, compare: &mut |&T, &
         let mut child = 2 * pos + 1;
         while child < end {
             let right = child + 1;
-            if right < end && (*compare)(&v[child], &v[right]) != Greater {
+            if right < end && compare_idxs(v, child, right, compare) != Greater {
                 child = right;
             }
             let x = replace(&mut v[child], zeroed());
@@ -230,7 +237,7 @@ fn siftdown_range<T>(v: &mut [T], mut pos: uint, end: uint, compare: &mut |&T, &
     }
 }
 
-fn siftdown<T>(v: &mut [T], pos: uint, compare: &mut |&T, &T| -> Ordering) {
+fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
     let len = v.len();
     siftdown_range(v, pos, len, compare);
 }
@@ -282,60 +289,71 @@ fn log2(v: uint) -> u32 {
     }
 }
 
-#[cfg(test)]
+// TODO Replace this function when unboxed closures work properly
+// Blocked on https://github.com/rust-lang/rust/issues/17661
+#[inline(always)]
+unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
+    use std::mem::{transmute};
+
+    let x = v.unsafe_get(a);
+    let y = v.unsafe_get(b);
+    compare(transmute(x), transmute(y))
+}
+
+#[inline(always)]
+fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
+    use std::mem::{transmute};
+
+    unsafe { compare(transmute(&v[a]), transmute(&v[b])) }
+}
+
 mod test_sort {
-    use super::{introsort, partition, insertion_sort, heapsort, log2};
+    use super::{sort_by, partition, insertion_sort, heapsort};
     use std::rand::{Rng, weak_rng};
 
-    fn introsort_wrapper<T>(v: &mut [T], compare: &mut |&T, &T| -> Ordering) {
-       let heapsort_depth = (3 * log2(v.len())) / 2;
-       introsort(v, compare, 0, heapsort_depth);
-    }
+    macro_rules! do_test_sort(
+        ($sortfun:ident) => ({
+            let cmp = |&: a: &uint, b: &uint| a.cmp(b);
+            let cmp_rev = |&: a: &uint, b: &uint| b.cmp(a);
+            for len in range(4u, 25) {
+                for _ in range(0i, 100) {
+                    let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| x as uint)
+                                            .collect::<Vec<uint>>();
+                    let mut v1 = v.clone();
+
+                    $sortfun(v[mut], &cmp);
+                    assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
+
+                    $sortfun(v1[mut], &cmp);
+                    assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
+
+                    $sortfun(v1[mut], &cmp_rev);
+                    assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
+                }
+            }
+            // shouldn't fail/crash
+            let mut v: [uint, .. 0] = [];
+            $sortfun(v[mut], &cmp);
+
+            let mut v = [0xDEADBEEFu];
+            $sortfun(v[mut], &cmp);
+            assert!(v == [0xDEADBEEF]);
+        })
+    )
 
     #[test]
     fn test_introsort() {
-        do_test_sort(&introsort_wrapper::<uint>);
+        do_test_sort!(sort_by);
     }
 
     #[test]
     fn test_heapsort() {
-        do_test_sort(&heapsort::<uint>);
+        do_test_sort!(heapsort);
     }
 
     #[test]
     fn test_insertion_sort() {
-        do_test_sort(&insertion_sort::<uint>);
-    }
-
-    fn do_test_sort(sort: &fn(&mut [uint], &mut |&uint, &uint| -> Ordering)) {
-        let mut cmp = |a: &uint, b: &uint| a.cmp(b);
-        let mut cmp_rev = |a: &uint, b: &uint| b.cmp(a);
-        for len in range(4u, 25) {
-            for _ in range(0i, 100) {
-                let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| x as uint)
-                                        .collect::<Vec<uint>>();
-                let mut v1 = v.clone();
-
-                println!("{}", v);
-                (*sort)(v[mut], &mut cmp);
-                println!("{}", v);
-                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
-
-                (*sort)(v1[mut], &mut cmp);
-                assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
-
-                (*sort)(v1[mut], &mut cmp_rev);
-                assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
-            }
-        }
-
-        // shouldn't fail/crash
-        let mut v: [uint, .. 0] = [];
-        (*sort)(v[mut], &mut cmp);
-
-        let mut v = [0xDEADBEEFu];
-        (*sort)(v[mut], &mut cmp);
-        assert!(v == [0xDEADBEEF]);
+        do_test_sort!(insertion_sort);
     }
 
     #[ignore]
@@ -356,7 +374,7 @@ mod test_sort {
     fn do_test_partition(mut v: Vec<int>, pivot: uint) {
         let pivot_elem = v[pivot];
         println!("{}, {}", v[], pivot_elem);
-        let (l, r) = partition(v[mut], pivot, &mut |a, b| a.cmp(b));
+        let (l, r) = partition(v[mut], pivot, &|&: a: &int, b| a.cmp(b));
         println!("{}", v[]);
         println!("({}, {})", l, r);
 
@@ -539,7 +557,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
-            heapsort(v[mut], &mut |a: &u64, b| a.cmp(b));
+            heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
         });
         b.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
@@ -549,7 +567,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            insertion_sort(v[mut], &mut |a: &u64, b| a.cmp(b));
+            insertion_sort(v[mut], &|&: a: &u64, b| a.cmp(b));
         });
         b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
@@ -559,7 +577,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            heapsort(v[mut], &mut |a: &u64, b| a.cmp(b));
+            heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
         });
         b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
