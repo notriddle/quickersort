@@ -564,5 +564,30 @@ mod bench {
         b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
 
-    fn cmp<T: Ord>(a: &T, b: &T) -> Ordering { a.cmp(b) }
+    #[bench]
+    fn sort_strings(b: &mut Bencher) {
+        let mut rng = weak_rng();
+        let n = 10_000u;
+        let mut v = Vec::with_capacity(n);
+        let mut bytes = 0;
+        for _ in range(0, n) {
+            let len = rng.gen_range(0, 60);
+            bytes += len;
+            let mut s = String::with_capacity(len);
+            if len == 0 {
+                v.push(s);
+                continue;
+            }
+            for _ in range(0, len) {
+                s.push(rng.gen_range(b'a', b'z') as char);
+            }
+            v.push(s);
+        }
+
+        b.iter(|| {
+            rng.shuffle(v[mut]);
+            sort(v[mut]);
+        });
+        b.bytes = bytes as u64;
+    }
 }
