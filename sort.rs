@@ -21,10 +21,10 @@ const LARGE_ELEM_THRESHOLD: uint = 16;
 
 /// For more than this many elements (but fewer than `MEDIAN_MEDIAN_THRESHOLD`) the pivot
 /// selection is done by median of 3. For fewer elements, the middle one is chosen.
-const MEDIAN_THRESHOLD: uint = 64;
+const MEDIAN_THRESHOLD: uint = 128;
 
 /// For more than this many elements, median of 3 median-of-3 will be used for pivot selection.
-const MEDIAN_MEDIAN_THRESHOLD: uint = 256;
+const MEDIAN_MEDIAN_THRESHOLD: uint = 512;
 
 
 pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
@@ -176,6 +176,7 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
     }
 }
 
+#[cold]
 fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
