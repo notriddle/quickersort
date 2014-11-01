@@ -52,8 +52,17 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     let pivot = find_pivot(v, compare);
     let (l, r) = partition(v, pivot, compare);
     let n = v.len();
-    if l > 0 { introsort(v[mut ..l], compare, rec + 1, heapsort_depth); }
-    if r > 0 { introsort(v[mut n - r..], compare, rec + 1, heapsort_depth); }
+    if r <= 1 {
+        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
+    } else if l <= 1 {
+        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
+    } else if r < l {
+        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
+        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
+    } else {
+        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
+        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
+    }
 }
 
 fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) -> bool {
