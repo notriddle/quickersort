@@ -117,7 +117,7 @@ fn insertion_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: 
 
 fn dual_pivot_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivots: (uint, uint, uint, uint, uint),
                                                                compare: &C, rec: u32, heapsort_depth: u32) {
-    let (pmin, p1, pmid, p2, pmax) = pivots;
+    let (pmin, p1, _, p2, pmax) = pivots;
     let n = v.len();
 
     v.swap(p1, 0);
@@ -161,17 +161,20 @@ fn dual_pivot_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v:
     v.swap(0, lesser);
     v.swap(n - 1, greater);
 
-    // Sort left and right
+    // Sort left and right partition
     introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
     introsort(v[mut greater+1..], compare, rec + 1, heapsort_depth);
 
-    // TODO do something clever here
+    // Sort center partition
+    let left = lesser+1;
+    let right = greater;
     if lesser >= pmin || greater <= pmax {
         // Center partition is small
-        introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
+        let mid = (right - left) / 2;
+        single_pivot_sort(v[mut left..right], mid, compare, rec + 1, heapsort_depth);
     } else {
         // Center partition is big
-        introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
+        introsort(v[mut left..right], compare, rec + 1, heapsort_depth);
     }
 }
 
