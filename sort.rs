@@ -252,51 +252,14 @@ fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, 
     siftdown_range(v, pos, len, compare);
 }
 
-fn log2(v: uint) -> u32 {
-    // From "Bit Twiddling Hacks" by Sean Eron Anderson
-    fn log2_32(mut v: u32) -> u32 {
-        const DE_BRUIJN: &'static [u32] = &[
-            0, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18, 22, 25, 3, 30,
-            8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31
-        ];
-
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        DE_BRUIJN[((v * 0x07C4ACDD) >> 27) as uint]
-    }
-
-    // Based on the same idea, http://stackoverflow.com/a/11398748/616150
-    fn log2_64(mut v: u64) -> u32 {
-        const DE_BRUIJN: &'static [u32] = &[
-            63,  0, 58,  1, 59, 47, 53,  2,
-            60, 39, 48, 27, 54, 33, 42,  3,
-            61, 51, 37, 40, 49, 18, 28, 20,
-            55, 30, 34, 11, 43, 14, 22,  4,
-            62, 57, 46, 52, 38, 26, 32, 41,
-            50, 36, 17, 19, 29, 10, 13, 21,
-            56, 45, 25, 31, 35, 16,  9, 12,
-            44, 24, 15,  8, 23,  7,  6,  5
-        ];
-
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        v |= v >> 32;
-        DE_BRUIJN[(((v - (v >> 1))*0x07EDD5E59A4E28C2) >> 58) as uint]
-    }
-
-    // TODO Replace with some intrinsic
-    if v == 0 { return 0; }
-    if size_of::<uint>() == 8 {
-        log2_64(v as u64)
+fn log2(x: uint) -> u32 {
+    if x <= 1 { return 0; }
+    let n = if size_of::<uint>() == 8 {
+        (unsafe { std::intrinsics::ctlz64(x as u64) }) as u32
     } else {
-        log2_32(v as u32)
-    }
+        unsafe { std::intrinsics::ctlz32(x as u32) }
+    };
+    size_of::<uint>() as u32 * 8 - n
 }
 
 // TODO Replace this function when unboxed closures work properly
