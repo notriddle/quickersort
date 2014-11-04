@@ -10,10 +10,10 @@ use std::mem::{size_of, zeroed, replace, swap};
 use std::ptr;
 
 /// For up to this many small elements, insertion sort will be used
-const INSERTION_SMALL_THRESHOLD: uint = 10;
+const INSERTION_SMALL_THRESHOLD: uint = 32;
 
 /// For up to this many big elements, insertion sort will be used
-const INSERTION_LARGE_THRESHOLD: uint = 10;
+const INSERTION_LARGE_THRESHOLD: uint = 16;
 
 /// Element size in bytes from which a element is considered "large" for the purposes
 /// of insertion sort threshold selection;
