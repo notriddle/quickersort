@@ -6,51 +6,177 @@
 extern crate test;
 
 use std::cmp::min;
-use std::mem::{size_of, zeroed, replace};
+use std::mem::{size_of, zeroed, replace, swap};
 use std::ptr;
 
 /// For up to this many small elements, insertion sort will be used
-const INSERTION_SMALL_THRESHOLD: uint = 32;
+const INSERTION_SMALL_THRESHOLD: uint = 10;
 
 /// For up to this many big elements, insertion sort will be used
-const INSERTION_LARGE_THRESHOLD: uint = 16;
+const INSERTION_LARGE_THRESHOLD: uint = 10;
 
 /// Element size in bytes from which a element is considered "large" for the purposes
 /// of insertion sort threshold selection;
 const LARGE_ELEM_THRESHOLD: uint = 16;
 
-/// For more than this many elements (but fewer than `MEDIAN_MEDIAN_THRESHOLD`) the pivot
-/// selection is done by median of 3. For fewer elements, the middle one is chosen.
-const MEDIAN_THRESHOLD: uint = 128;
-
-/// For more than this many elements, median of 3 median-of-3 will be used for pivot selection.
-const MEDIAN_MEDIAN_THRESHOLD: uint = 512;
-
-
-pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn sort_by<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
     do_introsort(v, compare, 0, heapsort_depth);
 }
 
 #[inline]
-pub fn sort<T: Ord>(v: &mut [T]) {
+pub fn sort<T: Ord+std::fmt::Show>(v: &mut [T]) {
     sort_by(v, &|&: a: &T, b| a.cmp(b));
 }
 
-fn introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
+fn introsort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     if maybe_insertion_sort(v, compare) { return; }
     do_introsort(v, compare, rec, heapsort_depth);
 }
 
-fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
+fn do_introsort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
+    // This works around some bugs with unboxed closures
+    macro_rules! maybe_swap(
+        ($v: expr, $a: expr, $b: expr, $compare: expr) => {
+            if compare_idxs_safe($v, *$a, *$b, $compare) == Greater {
+                swap($a, $b);
+            }
+        }
+    )
+
     if rec > heapsort_depth {
         heapsort(v, compare);
         return;
     }
 
-    let pivot = find_pivot(v, compare);
-    let (l, r) = partition(v, pivot, compare);
+    let n = v.len();
+
+    // Pivot selection algorithm based on Java's DualPivotQuicksort.
+
+    // Fast approximation of n / 7
+    let seventh = (n / 8) + (n / 64) + 1;
+
+    // Pick five element evenly spaced around the middle (inclusive) of the slice.
+    let mut e3 = n / 2;
+    let mut e2 = e3 - seventh;
+    let mut e1 = e3 - 2*seventh;
+    let mut e4 = e3 + seventh;
+    let mut e5 = e3 + 2*seventh;
+
+    // Sort them with a sorting network.
+    maybe_swap!(v, &mut e1, &mut e2, compare);
+    maybe_swap!(v, &mut e4, &mut e5, compare);
+    maybe_swap!(v, &mut e3, &mut e5, compare);
+    maybe_swap!(v, &mut e3, &mut e4, compare);
+    maybe_swap!(v, &mut e2, &mut e5, compare);
+    maybe_swap!(v, &mut e1, &mut e4, compare);
+    maybe_swap!(v, &mut e1, &mut e3, compare);
+    maybe_swap!(v, &mut e2, &mut e4, compare);
+    maybe_swap!(v, &mut e2, &mut e3, compare);
+
+    if compare_idxs_safe(v, e1, e2, compare) != Equal &&
+       compare_idxs_safe(v, e2, e3, compare) != Equal &&
+       compare_idxs_safe(v, e3, e4, compare) != Equal &&
+       compare_idxs_safe(v, e4, e5, compare) != Equal {
+        // No consecutive pivot candidates are the same, meaning there is some variaton.
+        dual_pivot_sort(v, (e1, e2, e3, e4, e5), compare, rec, heapsort_depth);
+    } else {
+        // Two consecutive pivots candidates where the same.
+        // There are probably many similar elements.
+        single_pivot_sort(v, e3, compare, rec, heapsort_depth);
+    }
+}
+
+fn maybe_insertion_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) -> bool {
+    let n = v.len();
+    if n <= 1 {
+        return true;
+    }
+
+    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
+            || n <= INSERTION_SMALL_THRESHOLD {
+        insertion_sort(v, compare);
+        return true;
+    }
+    return false;
+}
+
+fn insertion_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+    let mut i = 1;
+    let n = v.len();
+    while i < n {
+        let mut j = i;
+        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
+            v.swap(j, j-1);
+            j -= 1;
+        }
+        i += 1;
+    }
+}
+
+fn dual_pivot_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivots: (uint, uint, uint, uint, uint),
+                                                               compare: &C, rec: u32, heapsort_depth: u32) {
+    let (pmin, p1, pmid, p2, pmax) = pivots;
+    let n = v.len();
+
+    v.swap(p1, 0);
+    v.swap(p2, n - 1);
+
+    let mut lesser = 1;
+    let mut greater = n - 2;
+
+    // Skip elements that are already in the correct position
+    while compare_idxs_safe(v, lesser, 0, compare) == Less { lesser += 1; }
+    while compare_idxs_safe(v, greater, n - 1, compare) == Greater { greater -= 1; }
+
+    let mut k = lesser;
+    // XXX We make some unecessary swaps since we can't leave uninitialized values
+    // in `v` in case `compare` unwinds.
+    'outer: while k <= greater {
+        if compare_idxs_safe(v, k, 0, compare) == Less {
+            v.swap(k, lesser);
+            lesser += 1;
+        } else {
+            let cmp = compare_idxs_safe(v, k, n - 1, compare);
+            if cmp == Greater || cmp == Equal {
+                while k < greater && compare_idxs_safe(v, greater, n - 1, compare) == Greater {
+                    greater -= 1;
+                }
+                v.swap(k, greater);
+                greater -= 1;
+                if compare_idxs_safe(v, k, 0, compare) == Less {
+                    v.swap(k, lesser);
+                    lesser += 1;
+                }
+            }
+        }
+        k += 1;
+    }
+
+    lesser -= 1;
+    greater += 1;
+
+    // Swap back pivots
+    v.swap(0, lesser);
+    v.swap(n - 1, greater);
+
+    // Sort left and right
+    introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
+    introsort(v[mut greater+1..], compare, rec + 1, heapsort_depth);
+
+    // TODO do something clever here
+    if lesser >= pmin || greater <= pmax {
+        // Center partition is small
+        introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
+    } else {
+        // Center partition is big
+        introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
+    }
+}
+
+fn single_pivot_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C, rec: u32, heapsort_depth: u32) {
+    let (l, r) = fat_partition(v, pivot, compare);
     let n = v.len();
     if r <= 1 {
         introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
@@ -65,79 +191,11 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     }
 }
 
-fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) -> bool {
-    let n = v.len();
-    if n <= 1 {
-        return true;
-    }
-
-    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
-            || n <= INSERTION_SMALL_THRESHOLD {
-        insertion_sort(v, compare);
-        return true;
-    }
-    return false;
-}
-
-fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
-    let mut i = 1;
-    let n = v.len();
-    while i < n {
-        let mut j = i;
-        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
-            v.swap(j, j-1);
-            j -= 1;
-        }
-        i += 1;
-    }
-}
-
-fn find_pivot<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], compare: &C) -> uint {
-    let n = v.len();
-    let mid = n / 2;
-    if n < MEDIAN_THRESHOLD {
-        mid
-    } else if n < MEDIAN_MEDIAN_THRESHOLD {
-        median3(v, 0, mid, n - 1, compare)
-    } else {
-        let end = n - 1;
-        let s = n / 8;
-        let a = median3(v, 0, s, 2 * s, compare);
-        let b = median3(v, mid - s, mid, mid + s, compare);
-        let c = median3(v, end - 2*s, end - s, end, compare);
-        median3(v, a, b, c, compare)
-    }
-}
-
-fn median3<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, c: uint, compare: &C) -> uint {
-    if compare_idxs_safe(v, a, b, compare) == Less {
-        if compare_idxs_safe(v, b, c, compare) == Less {
-            b
-        } else {
-            if compare_idxs_safe(v, a, c, compare) == Less {
-                c
-            } else {
-                a
-            }
-        }
-    } else {
-        if compare_idxs_safe(v, b, c, compare) == Greater {
-            b
-        } else {
-            if compare_idxs_safe(v, a, c, compare) == Greater {
-                c
-            } else {
-                a
-            }
-        }
-    }
-}
-
 /// Partitions elements, using the element at `pivot` as pivot.
 /// After partitioning, the array looks as following:
 /// <<<<<==>>>
 /// Return (number of < elements, number of > elements)
-fn partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C) -> (uint, uint)  {
+fn fat_partition<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C) -> (uint, uint)  {
     let mut a = 0;
     let mut b = a;
     let mut c = v.len() - 1;
@@ -186,7 +244,7 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
 }
 
 #[cold]
-fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+fn heapsort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
     while end > 0 {
@@ -196,7 +254,7 @@ fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C
     }
 }
 
-fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+fn heapify<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut n = v.len() / 2;
     while n > 0 {
         n -= 1;
@@ -204,7 +262,7 @@ fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C)
     }
 }
 
-fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
+fn siftup<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
     use std::mem::{transmute};
 
     unsafe {
@@ -225,7 +283,7 @@ fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, 
     }
 }
 
-fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
+fn siftdown_range<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
     unsafe {
         let start = pos;
         let new = replace(&mut v[pos], zeroed());
@@ -247,7 +305,7 @@ fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut p
     }
 }
 
-fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
+fn siftdown<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
     let len = v.len();
     siftdown_range(v, pos, len, compare);
 }
@@ -265,7 +323,7 @@ fn log2(x: uint) -> u32 {
 // TODO Replace this function when unboxed closures work properly
 // Blocked on https://github.com/rust-lang/rust/issues/17661
 #[inline(always)]
-unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
+unsafe fn compare_idxs<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
     use std::mem::{transmute};
 
     let x = v.unsafe_get(a);
@@ -274,27 +332,30 @@ unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: u
 }
 
 #[inline(always)]
-fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
+fn compare_idxs_safe<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
     use std::mem::{transmute};
 
     unsafe { compare(transmute(&v[a]), transmute(&v[b])) }
 }
 
 mod test_sort {
-    use super::{sort_by, partition, insertion_sort, heapsort};
+    use super::{sort_by, insertion_sort, heapsort};
     use std::rand::{Rng, weak_rng};
+    use std::iter::range_step;
 
     macro_rules! do_test_sort(
         ($sortfun:ident) => ({
             let cmp = |&: a: &uint, b: &uint| a.cmp(b);
             let cmp_rev = |&: a: &uint, b: &uint| b.cmp(a);
-            for len in range(4u, 25) {
+            for len in range_step(4u, 250, 5) {
                 for _ in range(0i, 100) {
-                    let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| x as uint)
+                    let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| 10 + (x % 89) as uint)
                                             .collect::<Vec<uint>>();
                     let mut v1 = v.clone();
 
+                    //println!("{}", v);
                     $sortfun(v[mut], &cmp);
+                    println!("sorted:\t{}", v);
                     assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
                     $sortfun(v1[mut], &cmp);
@@ -327,52 +388,6 @@ mod test_sort {
     #[test]
     fn test_insertion_sort() {
         do_test_sort!(insertion_sort);
-    }
-
-    #[ignore]
-    #[test]
-    fn test_partition() {
-        let mut rng = weak_rng();
-        for _ in range(0i, 100) {
-            let len = rng.gen_range(0, 20);
-            let mut v = Vec::new();
-            for _ in range(0, len) {
-                v.push(rng.gen_range(-10, 10));
-            }
-            let pivot = if len == 0 { 0 } else { rng.gen_range(0, len) };
-            do_test_partition(v, pivot);
-        }
-    }
-
-    fn do_test_partition(mut v: Vec<int>, pivot: uint) {
-        let pivot_elem = v[pivot];
-        println!("{}, {}", v[], pivot_elem);
-        let (l, r) = partition(v[mut], pivot, &|&: a: &int, b| a.cmp(b));
-        println!("{}", v[]);
-        println!("({}, {})", l, r);
-
-        let mut i = 0;
-        let mut less = 0;
-        let mut greater = 0;
-        loop {
-            if v[i] == pivot_elem { break; }
-            assert!(v[i] < pivot_elem);
-            i += 1;
-            less += 1;
-        }
-        loop {
-            if v[i] > pivot_elem { break; }
-            assert!(v[i] == pivot_elem);
-            i += 1;
-        }
-        while i < v.len() {
-            assert!(v[i] > pivot_elem);
-            i += 1;
-            greater += 1;
-        }
-
-        assert_eq!(l, less);
-        assert_eq!(r, greater);
     }
 }
 
@@ -505,7 +520,7 @@ mod bench {
 
     #[bench]
     fn sort_partially_sorted(b: &mut Bencher) {
-        fn partially_sort<T: Ord>(v: &mut [T]) {
+        fn partially_sort<T: Ord+::std::fmt::Show>(v: &mut [T]) {
             let s = v.len() / 100;
             if s == 0 { return; }
             let mut sorted = true;
