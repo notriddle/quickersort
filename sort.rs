@@ -5,19 +5,20 @@
 
 extern crate test;
 
-use std::cmp::min;
+use std::cmp::{min, max};
 use std::mem::{size_of, zeroed, replace, swap};
 use std::ptr;
 
-/// For up to this many small elements, insertion sort will be used
-const INSERTION_SMALL_THRESHOLD: uint = 32;
+/// The smallest number of elements that may be quicksorted.
+/// Must be at least 9.
+const MIN_QUICKSORT_ELEMS: uint = 9;
 
-/// For up to this many big elements, insertion sort will be used
-const INSERTION_LARGE_THRESHOLD: uint = 16;
+/// The maximum number of elements to be insertion sorted.
+const MAX_INSERTION_SORT_ELEMS: uint = 40;
 
-/// Element size in bytes from which a element is considered "large" for the purposes
-/// of insertion sort threshold selection;
-const LARGE_ELEM_THRESHOLD: uint = 16;
+/// Controls the number of elements to be insertion sorted.
+/// Higher values give more insertion sorted elements.
+const INSERTION_SORT_FACTOR: uint = 440;
 
 pub fn sort_by<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
@@ -94,8 +95,9 @@ fn maybe_insertion_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering
         return true;
     }
 
-    if (size_of::<T>() >= LARGE_ELEM_THRESHOLD && n <= INSERTION_LARGE_THRESHOLD)
-            || n <= INSERTION_SMALL_THRESHOLD {
+    let threshold = min(MAX_INSERTION_SORT_ELEMS,
+                        max(MIN_QUICKSORT_ELEMS, INSERTION_SORT_FACTOR / size_of::<T>()));
+    if n <= threshold {
         insertion_sort(v, compare);
         return true;
     }
@@ -171,6 +173,7 @@ fn dual_pivot_sort<'a, T: 'a+std::fmt::Show, C: Fn<(&'a T, &'a T), Ordering>>(v:
     if lesser >= pmin || greater <= pmax {
         // Center partition is small
         let mid = (right - left) / 2;
+        if maybe_insertion_sort(v[mut left..right], compare) { return; }
         single_pivot_sort(v[mut left..right], mid, compare, rec + 1, heapsort_depth);
     } else {
         // Center partition is big
