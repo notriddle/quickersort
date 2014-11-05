@@ -1,0 +1,8 @@
+[package]
+name = "rust-introsort"
+version = "0.1.0"
+authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
+
+[lib]
+name = "introsort"
+path = "src/lib.rs"

@@ -1,10 +1,3 @@
-#![feature(slicing_syntax)]
-#![feature(overloaded_calls)]
-#![feature(unboxed_closures)]
-#![feature(macro_rules)]
-
-extern crate test;
-
 use std::cmp::{min, max};
 use std::mem::{size_of, zeroed, replace, swap};
 use std::ptr;
@@ -322,9 +315,9 @@ fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, 
 fn log2(x: uint) -> u32 {
     if x <= 1 { return 0; }
     let n = if size_of::<uint>() == 8 {
-        (unsafe { std::intrinsics::ctlz64(x as u64) }) as u32
+        (unsafe { ::std::intrinsics::ctlz64(x as u64) }) as u32
     } else {
-        unsafe { std::intrinsics::ctlz32(x as u32) }
+        unsafe { ::std::intrinsics::ctlz32(x as u32) }
     };
     size_of::<uint>() as u32 * 8 - n
 }
@@ -347,6 +340,7 @@ fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uin
     unsafe { compare(transmute(&v[a]), transmute(&v[b])) }
 }
 
+#[cfg(test)]
 mod test_sort {
     use super::{sort_by, insertion_sort, heapsort};
     use std::rand::{Rng, weak_rng};
