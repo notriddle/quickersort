@@ -11,14 +11,14 @@ use std::ptr;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
-const MIN_QUICKSORT_ELEMS: uint = 9;
+const MIN_QUICKSORT_ELEMS: uint = 10;
 
 /// The maximum number of elements to be insertion sorted.
-const MAX_INSERTION_SORT_ELEMS: uint = 40;
+const MAX_INSERTION_SORT_ELEMS: uint = 42;
 
 /// Controls the number of elements to be insertion sorted.
 /// Higher values give more insertion sorted elements.
-const INSERTION_SORT_FACTOR: uint = 440;
+const INSERTION_SORT_FACTOR: uint = 450;
 
 pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
@@ -122,32 +122,35 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
     let (pmin, p1, _, p2, pmax) = pivots;
     let n = v.len();
 
-    v.swap(p1, 0);
-    v.swap(p2, n - 1);
+    let lp = 0;
+    let rp = n - 1;
+
+    v.swap(p1, lp);
+    v.swap(p2, rp);
 
     let mut lesser = 1;
     let mut greater = n - 2;
 
     // Skip elements that are already in the correct position
-    while compare_idxs_safe(v, lesser, 0, compare) == Less { lesser += 1; }
-    while compare_idxs_safe(v, greater, n - 1, compare) == Greater { greater -= 1; }
+    while compare_idxs_safe(v, lesser, lp, compare) == Less { lesser += 1; }
+    while compare_idxs_safe(v, greater, rp, compare) == Greater { greater -= 1; }
 
     let mut k = lesser;
     // XXX We make some unecessary swaps since we can't leave uninitialized values
     // in `v` in case `compare` unwinds.
-    'outer: while k <= greater {
-        if compare_idxs_safe(v, k, 0, compare) == Less {
+    while k <= greater {
+        if compare_idxs_safe(v, k, lp, compare) == Less {
             v.swap(k, lesser);
             lesser += 1;
         } else {
-            let cmp = compare_idxs_safe(v, k, n - 1, compare);
+            let cmp = compare_idxs_safe(v, k, rp, compare);
             if cmp == Greater || cmp == Equal {
-                while k < greater && compare_idxs_safe(v, greater, n - 1, compare) == Greater {
+                while k < greater && compare_idxs_safe(v, greater, rp, compare) == Greater {
                     greater -= 1;
                 }
                 v.swap(k, greater);
                 greater -= 1;
-                if compare_idxs_safe(v, k, 0, compare) == Less {
+                if compare_idxs_safe(v, k, lp, compare) == Less {
                     v.swap(k, lesser);
                     lesser += 1;
                 }
@@ -160,8 +163,8 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
     greater += 1;
 
     // Swap back pivots
-    v.swap(0, lesser);
-    v.swap(n - 1, greater);
+    v.swap(lp, lesser);
+    v.swap(rp, greater);
 
     // Sort left and right partition
     introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
