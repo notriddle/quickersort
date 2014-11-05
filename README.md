@@ -15,12 +15,15 @@ An example:
     extern crate introsort;
 
     fn main() {
-        let mut ss = vec!["Introsort", "or", "introspective", "sort", "is", "a", "hybrid", "sorting",
-                          "algorithm", "that", "provides", "both", "fast", "average", "performance",
-                          "and", "(asymptotically)", "optimal", "worst-case", "performance"];
+        let mut ss = vec!["Introsort", "or", "introspective", "sort", "is",
+                          "a", "hybrid", "sorting", "algorithm", "that",
+                          "provides", "both", "fast", "average",
+                          "performance", "and", "(asymptotically)", "optimal",
+                          "worst-case", "performance"];
         introsort::sort(ss[mut]);
         println!("alphabetically = {}", ss[]);
-        introsort::sort_by(ss[mut], &|&: a: &&'static str, b: &&'static str| a.len().cmp(&b.len()));
+        introsort::sort_by(ss[mut], &|&: a: &&'static str, b: &&'static str|
+                                        a.len().cmp(&b.len()));
         println!("by length = {}", ss[]);
     }
 ```
