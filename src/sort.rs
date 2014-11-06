@@ -180,15 +180,10 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
 fn single_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C, rec: u32, heapsort_depth: u32) {
     let (l, r) = fat_partition(v, pivot, compare);
     let n = v.len();
-    if r <= 1 {
+    if l > 1 {
         introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
-    } else if l <= 1 {
-        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
-    } else if r < l {
-        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
-        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
-    } else {
-        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
+    }
+    if r > 1 {
         introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
     }
 }
@@ -246,6 +241,7 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
 }
 
 #[cold]
+#[inline(never)]
 fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
@@ -256,6 +252,7 @@ fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C
     }
 }
 
+#[inline]
 fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut n = v.len() / 2;
     while n > 0 {
@@ -264,6 +261,7 @@ fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C)
     }
 }
 
+#[inline]
 fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
     use std::mem::{transmute};
 
@@ -285,6 +283,7 @@ fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, 
     }
 }
 
+#[inline]
 fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
     unsafe {
         let start = pos;
@@ -307,6 +306,7 @@ fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut p
     }
 }
 
+#[inline]
 fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
     let len = v.len();
     siftdown_range(v, pos, len, compare);
