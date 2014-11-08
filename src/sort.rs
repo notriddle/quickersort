@@ -271,7 +271,7 @@ fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, 
         while pos > start {
             let parent = (pos - 1) >> 1;
             // TODO: Get rid of transmute when high-rank lifetimes work
-            if compare(transmute(&new), transmute(v.unsafe_get(parent))) == Greater {
+            if (*compare)(transmute(&new), transmute(v.unsafe_get(parent))) == Greater {
                 let x = replace(&mut v[parent], zeroed());
                 ptr::write(&mut v[pos], x);
                 pos = parent;
@@ -330,14 +330,14 @@ unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: u
 
     let x = v.unsafe_get(a);
     let y = v.unsafe_get(b);
-    compare(transmute(x), transmute(y))
+    (*compare)(transmute(x), transmute(y))
 }
 
 #[inline(always)]
 fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
     use std::mem::{transmute};
 
-    unsafe { compare(transmute(&v[a]), transmute(&v[b])) }
+    unsafe { (*compare)(transmute(&v[a]), transmute(&v[b])) }
 }
 
 #[cfg(test)]
