@@ -4,6 +4,8 @@ At its heart, it is a dual-pivot quicksort.
 It detects excessive recursion during quicksort and switches to heapsort if need be, guaranteeing O(n log(n)) runtime on all inputs.
 For small partitions it uses insertion sort instead of quicksort.
 
+This crate does not depend on `std`, and can be used with `#![no_std]` crates.
+
 ## Interface ##
 The interface is similar to the standard library `sort` and `sort_by` functions.
 One difference is that `introsort::sort_by` uses new-style "unboxed" closures for its comparison function.
