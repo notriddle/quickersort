@@ -1,10 +1,10 @@
+#![no_std]
+
 #![feature(slicing_syntax)]
 #![feature(overloaded_calls)]
 #![feature(unboxed_closures)]
 #![feature(macro_rules)]
 #![feature(globs)]
-
-#![no_std]
 
 extern crate core;
 

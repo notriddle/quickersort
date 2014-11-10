@@ -6,3 +6,5 @@ authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
 [lib]
 name = "introsort"
 path = "src/lib.rs"
+test = false
+bench=false
