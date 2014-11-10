@@ -1,6 +1,7 @@
-use std::cmp::{min, max};
-use std::mem::{size_of, zeroed, replace, swap};
-use std::ptr;
+use core::prelude::*;
+use core::cmp::{min, max};
+use core::mem::{size_of, zeroed, replace, swap, transmute};
+use core::ptr;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
@@ -97,7 +98,7 @@ fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T],
     return false;
 }
 
-fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
     while i < n {
@@ -242,7 +243,7 @@ fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
 
 #[cold]
 #[inline(never)]
-fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
     while end > 0 {
@@ -263,8 +264,6 @@ fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C)
 
 #[inline]
 fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
-    use std::mem::{transmute};
-
     unsafe {
         let new = replace(&mut v[pos], zeroed());
 
@@ -315,9 +314,9 @@ fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, 
 fn log2(x: uint) -> u32 {
     if x <= 1 { return 0; }
     let n = if size_of::<uint>() == 8 {
-        (unsafe { ::std::intrinsics::ctlz64(x as u64) }) as u32
+        (unsafe { ::core::intrinsics::ctlz64(x as u64) }) as u32
     } else {
-        unsafe { ::std::intrinsics::ctlz32(x as u32) }
+        unsafe { ::core::intrinsics::ctlz32(x as u32) }
     };
     size_of::<uint>() as u32 * 8 - n
 }
@@ -326,8 +325,6 @@ fn log2(x: uint) -> u32 {
 // Blocked on https://github.com/rust-lang/rust/issues/17661
 #[inline(always)]
 unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
-    use std::mem::{transmute};
-
     let x = v.unsafe_get(a);
     let y = v.unsafe_get(b);
     (*compare)(transmute(x), transmute(y))
@@ -335,231 +332,8 @@ unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: u
 
 #[inline(always)]
 fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
-    use std::mem::{transmute};
-
     unsafe { (*compare)(transmute(&v[a]), transmute(&v[b])) }
 }
 
-#[cfg(test)]
-mod test_sort {
-    use super::{sort_by, insertion_sort, heapsort};
-    use std::rand::{Rng, weak_rng};
-    use std::iter::range_step;
 
-    macro_rules! do_test_sort(
-        ($sortfun:ident) => ({
-            let cmp = |&: a: &uint, b: &uint| a.cmp(b);
-            let cmp_rev = |&: a: &uint, b: &uint| b.cmp(a);
-            for len in range_step(4u, 250, 5) {
-                for _ in range(0i, 100) {
-                    let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| 10 + (x % 89) as uint)
-                                            .collect::<Vec<uint>>();
-                    let mut v1 = v.clone();
 
-                    //println!("{}", v);
-                    $sortfun(v[mut], &cmp);
-                    println!("sorted:\t{}", v);
-                    assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
-
-                    $sortfun(v1[mut], &cmp);
-                    assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
-
-                    $sortfun(v1[mut], &cmp_rev);
-                    assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
-                }
-            }
-            // shouldn't fail/crash
-            let mut v: [uint, .. 0] = [];
-            $sortfun(v[mut], &cmp);
-
-            let mut v = [0xDEADBEEFu];
-            $sortfun(v[mut], &cmp);
-            assert!(v == [0xDEADBEEF]);
-        })
-    )
-
-    #[test]
-    fn test_introsort() {
-        do_test_sort!(sort_by);
-    }
-
-    #[test]
-    fn test_heapsort() {
-        do_test_sort!(heapsort);
-    }
-
-    #[test]
-    fn test_insertion_sort() {
-        do_test_sort!(insertion_sort);
-    }
-}
-
-#[cfg(test)]
-mod bench {
-    use super::{heapsort, insertion_sort, sort};
-    use std::rand::{weak_rng, Rng};
-    use std::mem;
-    use test::Bencher;
-
-    type BigSortable = (u64,u64,u64,u64);
-
-    macro_rules! bench_random(
-        ($name: ident, $sortfun: ident, $typ: ty, $n: expr) => (
-            #[bench]
-            fn $name(b: &mut Bencher) {
-                let mut rng = weak_rng();
-                b.iter(|| {
-                    let mut v = rng.gen_iter::<$typ>().take($n).collect::<Vec<$typ>>();
-                    $sortfun(v[mut]);
-                });
-                b.bytes = $n * mem::size_of::<$typ>() as u64;
-            }
-        )
-    )
-
-    bench_random!(sort_tiny_random_small, sort, u8, 5)
-    bench_random!(sort_tiny_random_medium, sort, u8, 100)
-    bench_random!(sort_tiny_random_large, sort, u8, 10_000)
-
-    bench_random!(sort_random_small, sort, u64, 5)
-    bench_random!(sort_random_medium, sort, u64, 100)
-    bench_random!(sort_random_large, sort, u64, 10_000)
-
-    bench_random!(sort_big_random_small, sort, BigSortable, 5)
-    bench_random!(sort_big_random_medium, sort, BigSortable, 100)
-    bench_random!(sort_big_random_large, sort, BigSortable, 10_000)
-
-    #[bench]
-    fn sort_sorted(b: &mut Bencher) {
-        let mut v = Vec::from_fn(10000, |i| i);
-        b.iter(|| {
-            sort(v[mut]);
-        });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
-    }
-
-    #[bench]
-    fn sort_big_sorted(b: &mut Bencher) {
-        let mut v = Vec::from_fn(10000u, |i| (i, i, i, i));
-        b.iter(|| {
-            sort(v[mut]);
-        });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
-    }
-
-    #[bench]
-    fn sort_few_unique(b: &mut Bencher) {
-        let mut v = Vec::new();
-        for i in range(0u32, 10) {
-            for _ in range(0u, 100) {
-                v.push(i);
-            }
-        }
-        let mut rng = weak_rng();
-        b.iter(||{
-            rng.shuffle(v[mut]);
-            sort(v[mut]);
-        });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
-    }
-
-    #[bench]
-    fn sort_equals(b: &mut Bencher) {
-        let mut v = Vec::from_elem(1000, 1u);
-        b.iter(|| {
-            sort(v[mut]);
-        });
-        b.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
-    }
-
-    #[bench]
-    fn sort_huge(b: &mut Bencher) {
-        let mut rng = weak_rng();
-        let n = 100_000;
-        let mut v = rng.gen_iter::<int>().take(n).collect::<Vec<int>>();
-        b.iter(|| {
-            rng.shuffle(v[mut]);
-            sort(v[mut]);
-        });
-        b.bytes = (n * mem::size_of::<int>()) as u64;
-    }
-
-    #[bench]
-    fn sort_partially_sorted(b: &mut Bencher) {
-        fn partially_sort<T: Ord+::std::fmt::Show>(v: &mut [T]) {
-            let s = v.len() / 100;
-            if s == 0 { return; }
-            let mut sorted = true;
-            for c in v.chunks_mut(s) {
-                if sorted { sort(c[mut]); }
-                sorted = !sorted;
-            }
-        }
-        let mut rng = weak_rng();
-        let n = 10_000;
-        let mut v = rng.gen_iter::<int>().take(n).collect::<Vec<int>>();
-        b.iter(|| {
-            rng.shuffle(v[mut]);
-            partially_sort(v[mut]);
-            sort(v[mut]);
-        });
-        b.bytes = (n * mem::size_of::<int>()) as u64;
-    }
-
-    #[bench]
-    fn sort_random_large_heapsort(b: &mut Bencher) {
-        let mut rng = weak_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
-            heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
-        });
-        b.bytes = 10000 * mem::size_of::<u64>() as u64;
-    }
-
-    #[bench]
-    fn sort_random_medium_insertion_sort(b: &mut Bencher) {
-        let mut rng = weak_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            insertion_sort(v[mut], &|&: a: &u64, b| a.cmp(b));
-        });
-        b.bytes = 100 * mem::size_of::<u64>() as u64;
-    }
-
-    #[bench]
-    fn sort_random_medium_heapsort(b: &mut Bencher) {
-        let mut rng = weak_rng();
-        b.iter(|| {
-            let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
-        });
-        b.bytes = 100 * mem::size_of::<u64>() as u64;
-    }
-
-    #[bench]
-    fn sort_strings(b: &mut Bencher) {
-        let mut rng = weak_rng();
-        let n = 10_000u;
-        let mut v = Vec::with_capacity(n);
-        let mut bytes = 0;
-        for _ in range(0, n) {
-            let len = rng.gen_range(0, 60);
-            bytes += len;
-            let mut s = String::with_capacity(len);
-            if len == 0 {
-                v.push(s);
-                continue;
-            }
-            for _ in range(0, len) {
-                s.push(rng.gen_range(b'a', b'z') as char);
-            }
-            v.push(s);
-        }
-
-        b.iter(|| {
-            rng.shuffle(v[mut]);
-            sort(v[mut]);
-        });
-        b.bytes = bytes as u64;
-    }
-}
