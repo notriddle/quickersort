@@ -32,5 +32,7 @@ Unlike the standard library sort function, introsort is _not_ a stable sort.
 
 ## Performance ##
 It is quite fast, outperforming the standard sort on my benchmarks.
+For a more comprehensive (and more accurate) comparison with std,
+see `perf.txt`.
 
 ![Benchmark results](perf.png)
