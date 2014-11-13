@@ -34,7 +34,7 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     // This works around some bugs with unboxed closures
     macro_rules! maybe_swap(
         ($v: expr, $a: expr, $b: expr, $compare: expr) => {
-            if compare_idxs_safe($v, *$a, *$b, $compare) == Greater {
+            if compare_idxs($v, *$a, *$b, $compare) == Greater {
                 swap($a, $b);
             }
         }
@@ -60,20 +60,22 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     let mut e5 = e3 + 2*seventh;
 
     // Sort them with a sorting network.
-    maybe_swap!(v, &mut e1, &mut e2, compare);
-    maybe_swap!(v, &mut e4, &mut e5, compare);
-    maybe_swap!(v, &mut e3, &mut e5, compare);
-    maybe_swap!(v, &mut e3, &mut e4, compare);
-    maybe_swap!(v, &mut e2, &mut e5, compare);
-    maybe_swap!(v, &mut e1, &mut e4, compare);
-    maybe_swap!(v, &mut e1, &mut e3, compare);
-    maybe_swap!(v, &mut e2, &mut e4, compare);
-    maybe_swap!(v, &mut e2, &mut e3, compare);
+    unsafe {
+        maybe_swap!(v, &mut e1, &mut e2, compare);
+        maybe_swap!(v, &mut e4, &mut e5, compare);
+        maybe_swap!(v, &mut e3, &mut e5, compare);
+        maybe_swap!(v, &mut e3, &mut e4, compare);
+        maybe_swap!(v, &mut e2, &mut e5, compare);
+        maybe_swap!(v, &mut e1, &mut e4, compare);
+        maybe_swap!(v, &mut e1, &mut e3, compare);
+        maybe_swap!(v, &mut e2, &mut e4, compare);
+        maybe_swap!(v, &mut e2, &mut e3, compare);
+    }
 
-    if compare_idxs_safe(v, e1, e2, compare) != Equal &&
-       compare_idxs_safe(v, e2, e3, compare) != Equal &&
-       compare_idxs_safe(v, e3, e4, compare) != Equal &&
-       compare_idxs_safe(v, e4, e5, compare) != Equal {
+    if unsafe { compare_idxs(v, e1, e2, compare) != Equal &&
+                compare_idxs(v, e2, e3, compare) != Equal &&
+                compare_idxs(v, e3, e4, compare) != Equal &&
+                compare_idxs(v, e4, e5, compare) != Equal } {
         // No consecutive pivot candidates are the same, meaning there is some variaton.
         dual_pivot_sort(v, (e1, e2, e3, e4, e5), compare, rec, heapsort_depth);
     } else {
@@ -104,7 +106,7 @@ pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], c
     while i < n {
         let mut j = i;
         while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
-            v.swap(j, j-1);
+            unsafe { unsafe_swap(v, j, j-1); }
             j -= 1;
         }
         i += 1;
@@ -113,7 +115,7 @@ pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], c
 
 fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivots: (uint, uint, uint, uint, uint),
                                                                compare: &C, rec: u32, heapsort_depth: u32) {
-    let (pmin, p1, _, p2, pmax) = pivots;
+    let (pmin, p1, _pmid, p2, pmax) = pivots;
     let n = v.len();
 
     let lp = 0;
@@ -125,40 +127,44 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
     let mut lesser = 1;
     let mut greater = n - 2;
 
-    // Skip elements that are already in the correct position
-    while compare_idxs_safe(v, lesser, lp, compare) == Less { lesser += 1; }
-    while compare_idxs_safe(v, greater, rp, compare) == Greater { greater -= 1; }
+    unsafe {
+        // Skip elements that are already in the correct position
+        while compare_idxs(v, lesser, lp, compare) == Less { lesser += 1; }
+        while compare_idxs(v, greater, rp, compare) == Greater { greater -= 1; }
 
-    let mut k = lesser;
-    // XXX We make some unecessary swaps since we can't leave uninitialized values
-    // in `v` in case `compare` unwinds.
-    while k <= greater {
-        if compare_idxs_safe(v, k, lp, compare) == Less {
-            v.swap(k, lesser);
-            lesser += 1;
-        } else {
-            let cmp = compare_idxs_safe(v, k, rp, compare);
-            if cmp == Greater || cmp == Equal {
-                while k < greater && compare_idxs_safe(v, greater, rp, compare) == Greater {
+        let mut k = lesser;
+        // XXX We make some unecessary swaps since we can't leave uninitialized values
+        // in `v` in case `compare` unwinds.
+        while k <= greater {
+            if compare_idxs(v, k, lp, compare) == Less {
+                unsafe_swap(v, k, lesser);
+                lesser += 1;
+            } else {
+                let cmp = compare_idxs(v, k, rp, compare);
+                if cmp == Greater || cmp == Equal {
+                    while k < greater && compare_idxs(v, greater, rp, compare) == Greater {
+                        greater -= 1;
+                    }
+                    unsafe_swap(v, k, greater);
                     greater -= 1;
-                }
-                v.swap(k, greater);
-                greater -= 1;
-                if compare_idxs_safe(v, k, lp, compare) == Less {
-                    v.swap(k, lesser);
-                    lesser += 1;
+                    if compare_idxs(v, k, lp, compare) == Less {
+                        unsafe_swap(v, k, lesser);
+                        lesser += 1;
+                    }
                 }
             }
+            k += 1;
         }
-        k += 1;
     }
 
     lesser -= 1;
     greater += 1;
 
     // Swap back pivots
-    v.swap(lp, lesser);
-    v.swap(rp, greater);
+    unsafe {
+        unsafe_swap(v, lp, lesser);
+        unsafe_swap(v, rp, greater);
+    }
 
     // Sort left and right partition
     introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
@@ -198,13 +204,13 @@ fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot:
     let mut b = a;
     let mut c = v.len() - 1;
     let mut d = c;
-    v.swap(0, pivot);
+    unsafe { unsafe_swap(v, 0, pivot); }
     loop {
         while b <= c {
             let r = unsafe { compare_idxs(v, b, 0, compare) };
             if r == Greater { break; }
             if r == Equal {
-                v.swap(a, b);
+                unsafe { unsafe_swap(v, a, b); }
                 a += 1;
             }
             b += 1;
@@ -213,30 +219,30 @@ fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot:
             let r = unsafe { compare_idxs(v, c, 0, compare) };
             if r == Less { break; }
             if r == Equal {
-                v.swap(c, d);
+                unsafe { unsafe_swap(v, c, d); }
                 d -= 1;
             }
             c -= 1;
         }
         if b > c { break; }
-        v.swap(b, c);
+        unsafe { unsafe_swap(v, b, c); }
         b += 1;
         c -= 1;
     }
 
     let n = v.len();
     let l = min(a, b - a);
-    swap_many(v, 0, b - l, l);
+    unsafe { swap_many(v, 0, b - l, l); }
     let r = min(d - c, n - 1 - d);
-    swap_many(v, b, n - r, r);
+    unsafe { swap_many(v, b, n - r, r); }
 
     return (b - a, d - c);
 }
 
-fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
+unsafe fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
     let mut i = 0;
     while i < n {
-        v.swap(a + i, b + i);
+        unsafe_swap(v, a + i, b + i);
         i += 1;
     }
 }
@@ -335,5 +341,7 @@ fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uin
     unsafe { (*compare)(transmute(&v[a]), transmute(&v[b])) }
 }
 
-
-
+#[inline(always)]
+unsafe fn unsafe_swap<T>(v: &mut[T], a: uint, b: uint) {
+    ptr::swap(v.unsafe_mut(a) as *mut T, v.unsafe_mut(b) as *mut T);
+}
