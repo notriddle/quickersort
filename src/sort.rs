@@ -204,10 +204,10 @@ fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot:
     let mut b = a;
     let mut c = v.len() - 1;
     let mut d = c;
-    unsafe { unsafe_swap(v, 0, pivot); }
+    v.swap(0, pivot);
     loop {
         while b <= c {
-            let r = unsafe { compare_idxs(v, b, 0, compare) };
+            let r = compare_idxs_safe(v, b, 0, compare);
             if r == Greater { break; }
             if r == Equal {
                 unsafe { unsafe_swap(v, a, b); }
@@ -216,7 +216,7 @@ fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot:
             b += 1;
         }
         while c >= b {
-            let r = unsafe { compare_idxs(v, c, 0, compare) };
+            let r = compare_idxs_safe(v, c, 0, compare);
             if r == Less { break; }
             if r == Equal {
                 unsafe { unsafe_swap(v, c, d); }
