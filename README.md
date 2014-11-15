@@ -38,6 +38,6 @@ It is quite fast, outperforming the standard sort on all data sets I have tried.
 The performance difference varies depending on the characteristics of the data.
 On large, completely random arrays, `introsort` is only 5-10% faster than the standard sort.
 However, `introsort`'s performance is greatly improved if the data has few unique values or is (partially) sorted (including reversed data).
-For sorted data, `introsort` is ~4-5 times faster, and for data with few unique values it can be more than 30 times faster.
+For sorted data, `introsort` is ~4-5 times faster, and for data with few unique values it can be more than 20 times faster.
 
 [Detailed benchmark data](perf.txt) (only for integers as of now) is available.
