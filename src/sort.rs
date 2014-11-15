@@ -166,22 +166,9 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
         unsafe_swap(v, rp, greater);
     }
 
-    // Sort left and right partition
     introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
     introsort(v[mut greater+1..], compare, rec + 1, heapsort_depth);
-
-    // Sort center partition
-    let left = lesser+1;
-    let right = greater;
-    if lesser >= pmin || greater <= pmax {
-        // Center partition is small
-        let mid = (right - left) / 2;
-        if maybe_insertion_sort(v[mut left..right], compare) { return; }
-        single_pivot_sort(v[mut left..right], mid, compare, rec + 1, heapsort_depth);
-    } else {
-        // Center partition is big
-        introsort(v[mut left..right], compare, rec + 1, heapsort_depth);
-    }
+    introsort(v[mut left..right], compare, rec + 1, heapsort_depth);
 }
 
 fn single_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C, rec: u32, heapsort_depth: u32) {
