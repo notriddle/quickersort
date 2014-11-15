@@ -115,7 +115,7 @@ pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], c
 
 fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivots: (uint, uint, uint, uint, uint),
                                                                compare: &C, rec: u32, heapsort_depth: u32) {
-    let (pmin, p1, _pmid, p2, pmax) = pivots;
+    let (_, p1, _, p2, _) = pivots;
     let n = v.len();
 
     let lp = 0;
@@ -167,8 +167,8 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
     }
 
     introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
+    introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
     introsort(v[mut greater+1..], compare, rec + 1, heapsort_depth);
-    introsort(v[mut left..right], compare, rec + 1, heapsort_depth);
 }
 
 fn single_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C, rec: u32, heapsort_depth: u32) {
