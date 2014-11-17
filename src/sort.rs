@@ -20,7 +20,6 @@ pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare:
     do_introsort(v, compare, 0, heapsort_depth);
 }
 
-#[inline]
 pub fn sort<T: Ord>(v: &mut [T]) {
     sort_by(v, &|&: a: &T, b| a.cmp(b));
 }
@@ -246,7 +245,6 @@ pub fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     }
 }
 
-#[inline]
 fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
     let mut n = v.len() / 2;
     while n > 0 {
@@ -255,7 +253,6 @@ fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C)
     }
 }
 
-#[inline]
 fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
     unsafe {
         let new = replace(&mut v[pos], zeroed());
@@ -275,7 +272,6 @@ fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, 
     }
 }
 
-#[inline]
 fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
     unsafe {
         let start = pos;
@@ -298,7 +294,6 @@ fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut p
     }
 }
 
-#[inline]
 fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
     let len = v.len();
     siftdown_range(v, pos, len, compare);
