@@ -120,7 +120,7 @@ fn sort_random_large_heapsort(b: &mut Bencher) {
     let mut rng = weak_rng();
     b.iter(|| {
         let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
-        heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
+        heapsort(v[mut], &|a, b| a.cmp(b));
     });
     b.bytes = 10000 * mem::size_of::<u64>() as u64;
 }
@@ -130,7 +130,7 @@ fn sort_random_medium_insertion_sort(b: &mut Bencher) {
     let mut rng = weak_rng();
     b.iter(|| {
         let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-        insertion_sort(v[mut], &|&: a: &u64, b| a.cmp(b));
+        insertion_sort(v[mut], &|a, b| a.cmp(b));
     });
     b.bytes = 100 * mem::size_of::<u64>() as u64;
 }
@@ -140,7 +140,7 @@ fn sort_random_medium_heapsort(b: &mut Bencher) {
     let mut rng = weak_rng();
     b.iter(|| {
         let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-        heapsort(v[mut], &|&: a: &u64, b| a.cmp(b));
+        heapsort(v[mut], &|a, b| a.cmp(b));
     });
     b.bytes = 100 * mem::size_of::<u64>() as u64;
 }

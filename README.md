@@ -25,8 +25,7 @@ An example:
                           "worst-case", "performance"];
         introsort::sort(ss[mut]);
         println!("alphabetically = {}", ss[]);
-        introsort::sort_by(ss[mut], &|&: a: &&'static str, b: &&'static str|
-                                        a.len().cmp(&b.len()));
+        introsort::sort_by(ss[mut], &|a, b| a.len().cmp(&b.len()));
         println!("by length = {}", ss[]);
     }
 ```

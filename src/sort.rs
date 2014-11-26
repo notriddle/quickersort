@@ -21,7 +21,7 @@ pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare:
 }
 
 pub fn sort<T: Ord>(v: &mut [T]) {
-    sort_by(v, &|&: a: &T, b| a.cmp(b));
+    sort_by(v, &|a, b| a.cmp(b));
 }
 
 fn introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
