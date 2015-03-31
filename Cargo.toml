@@ -1,10 +1,13 @@
 [package]
 name = "rust-introsort"
-version = "0.1.0"
+version = "0.2.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
 
 [lib]
 name = "introsort"
 path = "src/lib.rs"
 test = false
-bench=false
+bench = false
+
+[dev-dependencies]
+rand = "0.3.4"

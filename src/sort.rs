@@ -1,20 +1,22 @@
 use core::prelude::*;
+use core::cmp::Ordering;
+use core::cmp::Ordering::*;
 use core::cmp::{min, max};
 use core::mem::{size_of, zeroed, replace, swap, transmute};
 use core::ptr;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
-const MIN_QUICKSORT_ELEMS: uint = 10;
+const MIN_QUICKSORT_ELEMS: usize = 10;
 
 /// The maximum number of elements to be insertion sorted.
-const MAX_INSERTION_SORT_ELEMS: uint = 42;
+const MAX_INSERTION_SORT_ELEMS: usize = 42;
 
 /// Controls the number of elements to be insertion sorted.
 /// Higher values give more insertion sorted elements.
-const INSERTION_SORT_FACTOR: uint = 450;
+const INSERTION_SORT_FACTOR: usize = 450;
 
-pub fn sort_by<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn sort_by<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
     do_introsort(v, compare, 0, heapsort_depth);
@@ -24,12 +26,12 @@ pub fn sort<T: Ord>(v: &mut [T]) {
     sort_by(v, &|a, b| a.cmp(b));
 }
 
-fn introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
+fn introsort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     if maybe_insertion_sort(v, compare) { return; }
     do_introsort(v, compare, rec, heapsort_depth);
 }
 
-fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
+fn do_introsort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     // This works around some bugs with unboxed closures
     macro_rules! maybe_swap(
         ($v: expr, $a: expr, $b: expr, $compare: expr) => {
@@ -37,7 +39,7 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
                 swap($a, $b);
             }
         }
-    )
+    );
 
     if rec > heapsort_depth {
         heapsort(v, compare);
@@ -84,7 +86,7 @@ fn do_introsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     }
 }
 
-fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) -> bool {
+fn maybe_insertion_sort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C) -> bool {
     let n = v.len();
     if n <= 1 {
         return true;
@@ -99,7 +101,7 @@ fn maybe_insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T],
     return false;
 }
 
-pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn insertion_sort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
     while i < n {
@@ -112,7 +114,7 @@ pub fn insertion_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], c
     }
 }
 
-fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivots: (uint, uint, uint, uint, uint),
+fn dual_pivot_sort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], pivots: (usize, usize, usize, usize, usize),
                                                                compare: &C, rec: u32, heapsort_depth: u32) {
     let (_, p1, _, p2, _) = pivots;
     let n = v.len();
@@ -165,19 +167,19 @@ fn dual_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivo
         unsafe_swap(v, rp, greater);
     }
 
-    introsort(v[mut ..lesser], compare, rec + 1, heapsort_depth);
-    introsort(v[mut lesser+1..greater], compare, rec + 1, heapsort_depth);
-    introsort(v[mut greater+1..], compare, rec + 1, heapsort_depth);
+    introsort(&mut v[..lesser], compare, rec + 1, heapsort_depth);
+    introsort(&mut v[lesser+1..greater], compare, rec + 1, heapsort_depth);
+    introsort(&mut v[greater+1..], compare, rec + 1, heapsort_depth);
 }
 
-fn single_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C, rec: u32, heapsort_depth: u32) {
+fn single_pivot_sort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], pivot: usize, compare: &C, rec: u32, heapsort_depth: u32) {
     let (l, r) = fat_partition(v, pivot, compare);
     let n = v.len();
     if l > 1 {
-        introsort(v[mut ..l], compare, rec + 1, heapsort_depth);
+        introsort(&mut v[..l], compare, rec + 1, heapsort_depth);
     }
     if r > 1 {
-        introsort(v[mut n - r..], compare, rec + 1, heapsort_depth);
+        introsort(&mut v[n - r..], compare, rec + 1, heapsort_depth);
     }
 }
 
@@ -185,7 +187,7 @@ fn single_pivot_sort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pi
 /// After partitioning, the array looks as following:
 /// <<<<<==>>>
 /// Return (number of < elements, number of > elements)
-fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot: uint, compare: &C) -> (uint, uint)  {
+fn fat_partition<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], pivot: usize, compare: &C) -> (usize, usize)  {
     let mut a = 0;
     let mut b = a;
     let mut c = v.len() - 1;
@@ -225,7 +227,7 @@ fn fat_partition<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pivot:
     return (b - a, d - c);
 }
 
-unsafe fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
+unsafe fn swap_many<T>(v: &mut [T], a: usize, b: usize, n: usize) {
     let mut i = 0;
     while i < n {
         unsafe_swap(v, a + i, b + i);
@@ -235,7 +237,7 @@ unsafe fn swap_many<T>(v: &mut [T], a: uint, b: uint, n: uint) {
 
 #[cold]
 #[inline(never)]
-pub fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+pub fn heapsort<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C) {
     heapify(v, compare);
     let mut end = v.len();
     while end > 0 {
@@ -245,7 +247,7 @@ pub fn heapsort<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare
     }
 }
 
-fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C) {
+fn heapify<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut n = v.len() / 2;
     while n > 0 {
         n -= 1;
@@ -253,14 +255,14 @@ fn heapify<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], compare: &C)
     }
 }
 
-fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, mut pos: uint, compare: &C) {
+fn siftup<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], start: usize, mut pos: usize, compare: &C) {
     unsafe {
         let new = replace(&mut v[pos], zeroed());
 
         while pos > start {
             let parent = (pos - 1) >> 1;
             // TODO: Get rid of transmute when high-rank lifetimes work
-            if (*compare)(transmute(&new), transmute(v.unsafe_get(parent))) == Greater {
+            if (*compare)(transmute(&new), transmute(v.get_unchecked(parent))) == Greater {
                 let x = replace(&mut v[parent], zeroed());
                 ptr::write(&mut v[pos], x);
                 pos = parent;
@@ -272,7 +274,7 @@ fn siftup<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], start: uint, 
     }
 }
 
-fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut pos: uint, end: uint, compare: &C) {
+fn siftdown_range<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], mut pos: usize, end: usize, compare: &C) {
     unsafe {
         let start = pos;
         let new = replace(&mut v[pos], zeroed());
@@ -294,36 +296,36 @@ fn siftdown_range<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], mut p
     }
 }
 
-fn siftdown<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &mut [T], pos: uint, compare: &C) {
+fn siftdown<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], pos: usize, compare: &C) {
     let len = v.len();
     siftdown_range(v, pos, len, compare);
 }
 
-fn log2(x: uint) -> u32 {
+fn log2(x: usize) -> u32 {
     if x <= 1 { return 0; }
-    let n = if size_of::<uint>() == 8 {
+    let n = if size_of::<usize>() == 8 {
         (unsafe { ::core::intrinsics::ctlz64(x as u64) }) as u32
     } else {
         unsafe { ::core::intrinsics::ctlz32(x as u32) }
     };
-    size_of::<uint>() as u32 * 8 - n
+    size_of::<usize>() as u32 * 8 - n
 }
 
 // TODO Replace this function when unboxed closures work properly
 // Blocked on https://github.com/rust-lang/rust/issues/17661
 #[inline(always)]
-unsafe fn compare_idxs<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
-    let x = v.unsafe_get(a);
-    let y = v.unsafe_get(b);
+unsafe fn compare_idxs<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &[T], a: usize, b: usize, compare: &C) -> Ordering {
+    let x = v.get_unchecked(a);
+    let y = v.get_unchecked(b);
     (*compare)(transmute(x), transmute(y))
 }
 
 #[inline(always)]
-fn compare_idxs_safe<'a, T: 'a, C: Fn<(&'a T, &'a T), Ordering>>(v: &[T], a: uint, b: uint, compare: &C) -> Ordering {
+fn compare_idxs_safe<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &[T], a: usize, b: usize, compare: &C) -> Ordering {
     unsafe { (*compare)(transmute(&v[a]), transmute(&v[b])) }
 }
 
 #[inline(always)]
-unsafe fn unsafe_swap<T>(v: &mut[T], a: uint, b: uint) {
-    ptr::swap(v.unsafe_mut(a) as *mut T, v.unsafe_mut(b) as *mut T);
+unsafe fn unsafe_swap<T>(v: &mut[T], a: usize, b: usize) {
+    ptr::swap(v.get_unchecked_mut(a) as *mut T, v.get_unchecked_mut(b) as *mut T);
 }
