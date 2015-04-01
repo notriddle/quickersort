@@ -1,36 +1,40 @@
 # Introsort #
-This is an implementation of the introsort algorithm.
-At its heart, it is a dual-pivot quicksort.
-It detects excessive recursion during quicksort and switches to heapsort if need be, guaranteeing O(n log(n)) runtime on all inputs.
-For small partitions it uses insertion sort instead of quicksort.
+This is an implementation of the introsort sorting algorithm.
 
 This crate does not depend on `std`, and can be used with `#![no_std]` crates.
 It does however depend on `core`.
 
 ## Interface ##
 The interface is similar to the standard library `sort` and `sort_by` functions.
-One difference is that `introsort::sort_by` uses new-style "unboxed" closures for its comparison function.
 
 An example:
 ```rust
-    #![feature(slicing_syntax)]
-    #![feature(unboxed_closures)]
-    extern crate introsort;
+extern crate introsort;
 
-    fn main() {
-        let mut ss = vec!["Introsort", "or", "introspective", "sort", "is",
-                          "a", "hybrid", "sorting", "algorithm", "that",
-                          "provides", "both", "fast", "average",
-                          "performance", "and", "(asymptotically)", "optimal",
-                          "worst-case", "performance"];
-        introsort::sort(ss[mut]);
-        println!("alphabetically = {}", ss[]);
-        introsort::sort_by(ss[mut], &|a, b| a.len().cmp(&b.len()));
-        println!("by length = {}", ss[]);
-    }
+fn main() {
+    let mut ss = vec!["Introsort", "or", "introspective", "sort", "is",
+                      "a", "hybrid", "sorting", "algorithm", "that",
+                      "provides", "both", "fast", "average",
+                      "performance", "and", "(asymptotically)", "optimal",
+                      "worst-case", "performance"];
+    introsort::sort(&mut ss[..]);
+    println!("alphabetically");
+    for s in ss.iter() { println!("\t{}", s); }
+    introsort::sort_by(&mut ss[..], &|a, b| a.len().cmp(&b.len()));
+    println!("\nby length");
+    for s in ss.iter() { println!("\t{}", s); }
+}
 ```
 
 Unlike the standard library sort function, introsort is _not_ a stable sort.
+
+## Details ##
+At its heart, it is a dual-pivot quicksort.
+For partition with many equal elements, it will instead use a single-pivot quicksort optimized for this case.
+It detects excessive recursion during quicksort and switches to heapsort if need be, guaranteeing O(n log(n)) runtime on all inputs.
+For small partitions it uses insertion sort instead of quicksort.
+
+Unlike the `std` sort, it does not allocate.
 
 ## Performance ##
 It is quite fast, outperforming the standard sort on all data sets I have tried.
