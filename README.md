@@ -1,4 +1,6 @@
 # Introsort #
+[![Build Status](https://travis-ci.org/veddan/rust-introsort.svg?branch=master)](https://travis-ci.org/veddan/rust-introsort)
+
 This is an implementation of the introsort sorting algorithm.
 
 This crate does not depend on `std`, and can be used with `#![no_std]` crates.
