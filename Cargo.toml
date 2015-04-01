@@ -2,6 +2,10 @@
 name = "introsort"
 version = "0.3.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
+description = "Fast sorting compatible with no_std."
+license = "Apache-2.0"
+repository = "https://github.com/veddan/rust-introsort"
+readme = "README.md"
 
 [lib]
 name = "introsort"
