@@ -4,7 +4,17 @@
 This is an implementation of the introsort sorting algorithm.
 
 This crate does not depend on `std`, and can be used with `#![no_std]` crates.
-It does however depend on `core`.
+It does however depend on `core`, but has no other dependencies except for testing.
+
+To use with cargo, add the following to your `Cargo.toml`:
+```toml
+[dependencies]
+introsort = "0.3.0"
+```
+and in your crate root, add
+```rust
+extern crate introsort;
+```
 
 ## Interface ##
 The interface is similar to the standard library `sort` and `sort_by` functions.

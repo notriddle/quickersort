@@ -1,6 +1,6 @@
 [package]
-name = "rust-introsort"
-version = "0.2.0"
+name = "introsort"
+version = "0.3.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
 
 [lib]
