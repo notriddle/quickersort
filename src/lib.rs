@@ -7,11 +7,9 @@
 extern crate core;
 
 pub use sort::{sort, sort_by, insertion_sort, heapsort};
+#[cfg(feature = "float")]
+pub use float::{sort_floats};
 
 mod sort;
-/*
-mod std {
-    mod slice {
-        pub use core::convert::AsRef;
-    }
-}*/
+#[cfg(feature = "float")]
+mod float;

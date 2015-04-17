@@ -52,3 +52,4 @@ fn test_heapsort() {
 fn test_insertion_sort() {
     do_test_sort!(insertion_sort);
 }
+

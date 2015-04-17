@@ -7,6 +7,10 @@ license = "Apache-2.0"
 repository = "https://github.com/veddan/rust-introsort"
 readme = "README.md"
 
+[features]
+default = [ "float" ]
+float = []
+
 [lib]
 name = "introsort"
 path = "src/lib.rs"
@@ -14,4 +18,7 @@ test = false
 bench = false
 
 [dev-dependencies]
-rand = "0.3.4"
+rand = "0.3.7"
+
+[profile.test]
+opt-level = 1
