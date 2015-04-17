@@ -9,7 +9,7 @@ It does however depend on `core`, but has no other dependencies except for testi
 To use with cargo, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
-introsort = "0.3.0"
+introsort = "0.4.0"
 ```
 and in your crate root, add
 ```rust
@@ -56,3 +56,12 @@ However, `introsort`'s performance is greatly improved if the data has few uniqu
 For sorted data, `introsort` is ~4-5 times faster, and for data with few unique values it can be more than 20 times faster.
 
 [Detailed benchmark data](perf.txt) (only for integers as of now) is available.
+
+## Floating point ##
+The crate, is built with the "float" feature (which is the default), also includes a `sort_floats` function.
+Floating point numbers are not `Ord`, only `PartialOrd`, so `sort` can not be used on them.
+The ordering used by `sort_floats` is
+```
+| -inf | < 0 | -0 | +0 | > 0 | +inf | NaN |
+```
+`sort_floats` is much more efficient than passing a comparator function implementing this ordering to `sort_by`.
