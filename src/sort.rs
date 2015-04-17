@@ -303,11 +303,7 @@ fn siftdown<'a, T: 'a, C: Fn(&'a T, &'a T) -> Ordering>(v: &mut [T], pos: usize,
 
 fn log2(x: usize) -> u32 {
     if x <= 1 { return 0; }
-    let n = if size_of::<usize>() == 8 {
-        (unsafe { ::core::intrinsics::ctlz64(x as u64) }) as u32
-    } else {
-        unsafe { ::core::intrinsics::ctlz32(x as u32) }
-    };
+    let n = x.leading_zeros();
     size_of::<usize>() as u32 * 8 - n
 }
 
