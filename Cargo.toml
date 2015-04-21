@@ -2,7 +2,10 @@
 name = "introsort"
 version = "0.4.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
-description = "Fast sorting compatible with no_std."
+description = """
+Fast sorting compatible with #[no_std].
+Also has (optional) support for efficient and robust sorting of floating point numbers."""
+keywords = ["sorting", "sort", "float"]
 license = "Apache-2.0"
 repository = "https://github.com/veddan/rust-introsort"
 readme = "README.md"
@@ -22,3 +25,4 @@ rand = "0.3.7"
 
 [profile.test]
 opt-level = 1
+
