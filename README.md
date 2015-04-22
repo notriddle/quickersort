@@ -58,10 +58,11 @@ For sorted data, `introsort` is ~4-5 times faster, and for data with few unique 
 [Detailed benchmark data](perf.txt) (only for integers as of now) is available.
 
 ## Floating point ##
-The crate, is built with the "float" feature (which is the default), also includes a `sort_floats` function.
+The crate, if built with the "float" feature (which is the default), also includes a `sort_floats` function.
 Floating point numbers are not `Ord`, only `PartialOrd`, so `sort` can not be used on them.
 The ordering used by `sort_floats` is
 ```
 | -inf | < 0 | -0 | +0 | > 0 | +inf | NaN |
 ```
 `sort_floats` is much more efficient than passing a comparator function implementing this ordering to `sort_by`.
+
