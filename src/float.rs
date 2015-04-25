@@ -1,6 +1,6 @@
 use super::sort::{sort_by};
 use core::prelude::*;
-use core::num::Float;
+use num::{Float,zero};
 use core::intrinsics::unreachable;
 
 /// Sorts floating point number.
@@ -53,10 +53,10 @@ pub fn sort_floats<T: Float>(v: &mut [T]) {
     let mut zeros = 0;
     let mut neg_zeros = 0;
     for x in v[left..].iter() {
-        if *x != Float::zero() {
+        if *x != zero() {
             break;
         }
-        if x.is_negative() {
+        if x.is_sign_negative() {
             neg_zeros += 1;
         } else {
             zeros += 1;
@@ -67,7 +67,7 @@ pub fn sort_floats<T: Float>(v: &mut [T]) {
             *x = Float::neg_zero();
             neg_zeros -= 1;
         } else if zeros > 0 {
-             *x = Float::zero();
+             *x = zero();
              zeros -= 1;
         } else {
             break;
@@ -84,14 +84,14 @@ fn find_first_zero<T: Float>(v: &[T]) -> usize {
 
     while left < hi {
         let mid = ((hi - left) / 2) + left;
-        if v[mid] < Float::zero() {
+        if v[mid] < zero() {
             left = mid + 1;
         } else {
             hi = mid;
         }
     }
 
-    while left < v.len() && v[left] < Float::zero() {
+    while left < v.len() && v[left] < zero() {
         left += 1;
     }
     return left;

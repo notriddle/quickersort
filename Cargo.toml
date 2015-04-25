@@ -12,13 +12,17 @@ readme = "README.md"
 
 [features]
 default = [ "float" ]
-float = []
+float = ["num"]
 
 [lib]
 name = "introsort"
 path = "src/lib.rs"
 test = false
 bench = false
+
+[dependencies.num]
+version = "*"
+optional = true
 
 [dev-dependencies]
 rand = "0.3.7"
