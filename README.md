@@ -9,7 +9,7 @@ It does however depend on `core`, but has no other dependencies except for testi
 To use with cargo, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
-introsort = "0.4.0"
+introsort = "0.5.0"
 ```
 and in your crate root, add
 ```rust
@@ -65,4 +65,12 @@ The ordering used by `sort_floats` is
 | -inf | < 0 | -0 | +0 | > 0 | +inf | NaN |
 ```
 `sort_floats` is much more efficient than passing a comparator function implementing this ordering to `sort_by`.
+
+Due to removal of the `Float` trait from the standard library, enabling float support will pull in `std` as a
+transitive dependency ([#3](https://github.com/veddan/rust-introsort/issues/3)).
+This problem should just be temporary while I figure out a good solution.
+Building without float support (add `default-features = false` under `[dependencies.introsort]`) still works
+with `#![no_std]`.
+
+
 

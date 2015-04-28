@@ -1,6 +1,6 @@
 [package]
 name = "introsort"
-version = "0.4.1"
+version = "0.5.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
 description = """
 Fast sorting compatible with #[no_std].
