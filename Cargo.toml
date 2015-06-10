@@ -1,6 +1,6 @@
 [package]
 name = "introsort"
-version = "0.5.0"
+version = "0.5.1"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
 description = """
 Fast sorting compatible with #[no_std].
@@ -21,11 +21,11 @@ test = false
 bench = false
 
 [dependencies.num]
-version = "*"
+version = "0.1.25"
 optional = true
 
 [dev-dependencies]
-rand = "0.3.7"
+rand = "0.3.8"
 
 [profile.test]
 opt-level = 1

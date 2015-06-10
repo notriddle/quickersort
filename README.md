@@ -9,7 +9,7 @@ It does however depend on `core`, but has no other dependencies except for testi
 To use with cargo, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
-introsort = "0.5.0"
+introsort = "0.5.1"
 ```
 and in your crate root, add
 ```rust
