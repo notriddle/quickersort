@@ -3,8 +3,10 @@
 #![feature(unboxed_closures)]
 #![feature(no_std)]
 #![feature(core)]
+#![feature(core_prelude)]
 
 extern crate core;
+extern crate unreachable;
 
 #[cfg(feature  = "float")]
 extern crate num;

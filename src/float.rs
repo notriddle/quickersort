@@ -1,7 +1,7 @@
 use super::sort::{sort_by};
 use core::prelude::*;
 use num::{Float,zero};
-use core::intrinsics::unreachable;
+use unreachable::unreachable;
 
 /// Sorts floating point number.
 /// The ordering used is

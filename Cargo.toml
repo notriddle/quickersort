@@ -20,6 +20,9 @@ path = "src/lib.rs"
 test = false
 bench = false
 
+[dependencies]
+unreachable = "0.0.2"
+
 [dependencies.num]
 version = "0.1.25"
 optional = true
