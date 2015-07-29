@@ -4,10 +4,12 @@
 #![feature(no_std)]
 #![feature(core)]
 #![feature(core_prelude)]
+#![feature(core_slice_ext)]
 
 extern crate core;
-extern crate unreachable;
 
+#[cfg(feature  = "float")]
+extern crate unreachable;
 #[cfg(feature  = "float")]
 extern crate num;
 
