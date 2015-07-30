@@ -1,5 +1,4 @@
 use super::sort::{sort_by};
-use core::prelude::*;
 use num::{Float,zero};
 use unreachable::unreachable;
 

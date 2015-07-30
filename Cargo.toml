@@ -1,13 +1,13 @@
 [package]
 name = "introsort"
-version = "0.5.1"
-authors = [ "Viktor Dahl <pazaconyoman@gmail.com>" ]
+version = "1.0.0"
+authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>" ]
 description = """
-Fast sorting compatible with #[no_std].
+Fast sorting compatible with stable Rust.
 Also has (optional) support for efficient and robust sorting of floating point numbers."""
 keywords = ["sorting", "sort", "float"]
 license = "Apache-2.0"
-repository = "https://github.com/veddan/rust-introsort"
+repository = "https://github.com/notriddle/rust-introsort"
 readme = "README.md"
 
 [features]
