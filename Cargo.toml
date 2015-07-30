@@ -1,5 +1,5 @@
 [package]
-name = "introsort"
+name = "quickersort"
 version = "1.0.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>" ]
 description = """
@@ -7,7 +7,7 @@ Fast sorting compatible with stable Rust.
 Also has (optional) support for efficient and robust sorting of floating point numbers."""
 keywords = ["sorting", "sort", "float"]
 license = "Apache-2.0"
-repository = "https://github.com/notriddle/rust-introsort"
+repository = "https://github.com/notriddle/quickersort"
 readme = "README.md"
 
 [features]
@@ -15,7 +15,7 @@ default = [ "float" ]
 float = ["num", "unreachable"]
 
 [lib]
-name = "introsort"
+name = "quickersort"
 path = "src/lib.rs"
 test = false
 bench = false

@@ -1,11 +1,11 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 
-extern crate introsort;
+extern crate quickersort;
 extern crate test;
 extern crate rand;
 
-use introsort::{heapsort, insertion_sort, sort};
+use quickersort::{heapsort, insertion_sort, sort};
 use rand::{weak_rng, Rng};
 use std::mem;
 use test::Bencher;

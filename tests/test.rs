@@ -1,11 +1,11 @@
 #![feature(test)]
 #![feature(step_by)]
 
-extern crate introsort;
+extern crate quickersort;
 extern crate test;
 extern crate rand;
 
-use introsort::{sort_by, insertion_sort, heapsort};
+use quickersort::{sort_by, insertion_sort, heapsort};
 use rand::{Rng, weak_rng};
 
 macro_rules! do_test_sort(

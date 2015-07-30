@@ -1,4 +1,4 @@
-extern crate introsort;
+extern crate quickersort;
 
 fn main() {
     let mut ss = vec!["Introsort", "or", "introspective", "sort", "is",
@@ -6,10 +6,10 @@ fn main() {
                       "provides", "both", "fast", "average",
                       "performance", "and", "(asymptotically)", "optimal",
                       "worst-case", "performance"];
-    introsort::sort(&mut ss[..]);
+    quickersort::sort(&mut ss[..]);
     println!("alphabetically");
     for s in ss.iter() { println!("\t{}", s); }
-    introsort::sort_by(&mut ss[..], &|a, b| a.len().cmp(&b.len()));
+    quickersort::sort_by(&mut ss[..], &|a, b| a.len().cmp(&b.len()));
     println!("\nby length");
     for s in ss.iter() { println!("\t{}", s); }
 }

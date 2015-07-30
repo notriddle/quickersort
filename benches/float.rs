@@ -1,7 +1,7 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 
-extern crate introsort;
+extern crate quickersort;
 extern crate test;
 extern crate rand;
 
@@ -11,14 +11,14 @@ mod bench {
 use std::f64;
 use std::cmp::Ordering::*;
 use rand::{Rng, weak_rng};
-use introsort;
+use quickersort;
 
 #[bench]
 fn bench_float_sort_float_f64_large(bench: &mut ::test::Bencher) {
     let v = f64_large();
     bench.iter(|| {
         let mut w = v.clone();
-        introsort::sort_floats(&mut w[..]);
+        quickersort::sort_floats(&mut w[..]);
     });
     bench.bytes = (::std::mem::size_of::<f64>() * v.len()) as u64;
 }
@@ -28,7 +28,7 @@ fn bench_float_sort_by_f64_large(bench: &mut ::test::Bencher) {
     let v = f64_large();
     bench.iter(|| {
         let mut w = v.clone();
-        introsort::sort_by(&mut w[..], &|&a: &f64, &b: &f64| {
+        quickersort::sort_by(&mut w[..], &|&a: &f64, &b: &f64| {
             if a.is_nan() && b.is_nan() {
                 Equal
             } else if a.is_nan() {

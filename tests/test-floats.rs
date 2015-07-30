@@ -1,4 +1,4 @@
-extern crate introsort;
+extern crate quickersort;
 extern crate rand;
 
 #[cfg(feature = "float")]
@@ -9,7 +9,7 @@ mod bench {
 
 use std::f64;
 use num::traits::{ToPrimitive};
-use introsort::{sort_floats};
+use quickersort::{sort_floats};
 use rand::{Rng, weak_rng};
 
 #[test]
