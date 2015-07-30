@@ -1,5 +1,8 @@
 # quickersort #
-[![Build Status](https://travis-ci.org/notriddle/rust-quickersort.svg?branch=master)](https://travis-ci.org/veddan/rust-quickersort)
+
+[![Build Status](https://travis-ci.org/notriddle/rust-quickersort.svg?branch=master)](https://travis-ci.org/notriddle/rust-quickersort)
+
+[Documentation](https://www.notriddle.com/rustdoc/quickersort/)
 
 This is an implementation of the introsort sorting algorithm.
 
