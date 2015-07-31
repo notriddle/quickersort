@@ -29,7 +29,7 @@ version = "0.1.25"
 optional = true
 
 [dev-dependencies]
-rand = "0.3.8"
+rand = "0.3.9"
 itertools = "0.3.23"
 
 [profile.test]
