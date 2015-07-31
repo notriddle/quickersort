@@ -1,18 +1,16 @@
-#![feature(test)]
-#![feature(step_by)]
-
 extern crate quickersort;
-extern crate test;
 extern crate rand;
+extern crate itertools;
 
 use quickersort::{sort_by, insertion_sort, heapsort};
 use rand::{Rng, weak_rng};
+use itertools::Itertools;
 
 macro_rules! do_test_sort(
     ($sortfun:ident) => ({
         let cmp = |a: &usize, b: &usize| a.cmp(b);
         let cmp_rev = |a: &usize, b: &usize| b.cmp(a);
-        for len in (4usize .. 250).step_by(5) {
+        for len in (4usize .. 250).step(5) {
             for _ in (0isize .. 100) {
                 let mut v = weak_rng().gen_iter::<u8>().take(len).map(|x| 10 + (x % 89) as usize)
                                         .collect::<Vec<usize>>();

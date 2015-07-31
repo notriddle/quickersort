@@ -1,5 +1,4 @@
 #![feature(test)]
-#![feature(unboxed_closures)]
 
 extern crate quickersort;
 extern crate test;
