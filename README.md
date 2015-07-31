@@ -1,6 +1,7 @@
 # quickersort #
 
-[![Build Status](https://travis-ci.org/notriddle/quickersort.svg?branch=master)](https://travis-ci.org/notriddle/quickersort)
+[![Build Status](https://travis-ci.org/notriddle/quickersort.svg)](https://travis-ci.org/notriddle/quickersort)
+[![Crates.IO](https://img.shields.io/crates/v/quickersort.svg)](https://crates.io/crates/quickersort)
 
 [Documentation](https://www.notriddle.com/rustdoc/quickersort/)
 
