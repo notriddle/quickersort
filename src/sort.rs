@@ -263,7 +263,7 @@ fn siftup<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], start: usize, mut pos: usiz
             let x = ptr::read(v.get_unchecked_mut(parent));
             ptr::write(v.get_unchecked_mut(pos), x);
             pos = parent;
-            parent = (pos - 1) / 4;
+            parent = pos.wrapping_sub(1) / 4;
         }
         ptr::write(v.get_unchecked_mut(pos), new);
     }
