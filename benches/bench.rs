@@ -93,6 +93,18 @@ fn sort_huge(b: &mut Bencher) {
 }
 
 #[bench]
+fn sort_enormous(b: &mut Bencher) {
+    let mut rng = weak_rng();
+    let n = 1_00_000;
+    let mut v = rng.gen_iter::<i64>().take(n).collect::<Vec<i64>>();
+    b.iter(|| {
+        rng.shuffle(&mut v[..]);
+        sort(&mut v[..]);
+    });
+    b.bytes = (n * mem::size_of::<i64>()) as u64;
+}
+
+#[bench]
 fn sort_partially_sorted(b: &mut Bencher) {
     fn partially_sort<T: Ord+::std::fmt::Display>(v: &mut [T]) {
         let s = v.len() / 100;
@@ -115,13 +127,33 @@ fn sort_partially_sorted(b: &mut Bencher) {
 }
 
 #[bench]
+fn sort_random_enormous_heapsort(b: &mut Bencher) {
+    let mut rng = weak_rng();
+    b.iter(|| {
+        let mut v = rng.gen_iter::<u64>().take(1_000_000).collect::<Vec<u64>>();
+        heapsort(&mut v[..], &|a, b| a.cmp(b));
+    });
+    b.bytes = 1_000_000 * mem::size_of::<u64>() as u64;
+}
+
+#[bench]
+fn sort_random_huge_heapsort(b: &mut Bencher) {
+    let mut rng = weak_rng();
+    b.iter(|| {
+        let mut v = rng.gen_iter::<u64>().take(100_000).collect::<Vec<u64>>();
+        heapsort(&mut v[..], &|a, b| a.cmp(b));
+    });
+    b.bytes = 100_000 * mem::size_of::<u64>() as u64;
+}
+
+#[bench]
 fn sort_random_large_heapsort(b: &mut Bencher) {
     let mut rng = weak_rng();
     b.iter(|| {
-        let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
+        let mut v = rng.gen_iter::<u64>().take(10_000).collect::<Vec<u64>>();
         heapsort(&mut v[..], &|a, b| a.cmp(b));
     });
-    b.bytes = 10000 * mem::size_of::<u64>() as u64;
+    b.bytes = 10_000 * mem::size_of::<u64>() as u64;
 }
 
 #[bench]

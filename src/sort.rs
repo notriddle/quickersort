@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::cmp::{min, max};
-use std::mem::{size_of, zeroed, replace, swap};
+use std::mem::{size_of, swap};
 use std::ptr;
 
 /// The smallest number of elements that may be quicksorted.
@@ -236,59 +236,77 @@ unsafe fn swap_many<T>(v: &mut [T], a: usize, b: usize, n: usize) {
 #[cold]
 #[inline(never)]
 pub fn heapsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
+    let mut end = v.len() as isize;
     heapify(v, compare);
-    let mut end = v.len();
     while end > 0 {
         end -= 1;
-        v.swap(0, end);
-        siftdown_range(v, 0, end, compare);
+        v.swap(0, end as usize);
+        siftdown_range(v, 0, end as usize, compare);
     }
 }
 
 fn heapify<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
-    let mut n = v.len() / 2;
-    while n > 0 {
+    let mut n = (v.len() as isize).wrapping_sub(1) / 4;
+    while n >= 0 {
+        siftdown(v, n as usize, compare);
         n -= 1;
-        siftdown(v, n, compare)
     }
 }
 
 fn siftup<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], start: usize, mut pos: usize, compare: &C) {
     unsafe {
-        let new = replace(&mut v[pos], zeroed());
+        let new = ptr::read(v.get_unchecked_mut(pos));
 
-        while pos > start {
-            let parent = (pos - 1) >> 1;
-            if compare(&new, v.get_unchecked(parent)) == Greater {
-                let x = replace(&mut v[parent], zeroed());
-                ptr::write(&mut v[pos], x);
-                pos = parent;
-                continue
-            }
-            break
+        let mut parent = pos.wrapping_sub(1) / 4;
+
+        while pos > start && compare(&new, v.get_unchecked(parent)) == Greater {
+            let x = ptr::read(v.get_unchecked_mut(parent));
+            ptr::write(v.get_unchecked_mut(pos), x);
+            pos = parent;
+            parent = (pos - 1) / 4;
         }
-        ptr::write(&mut v[pos], new);
+        ptr::write(v.get_unchecked_mut(pos), new);
     }
 }
 
 fn siftdown_range<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], mut pos: usize, end: usize, compare: &C) {
     unsafe {
         let start = pos;
-        let new = replace(&mut v[pos], zeroed());
+        let new = ptr::read(v.get_unchecked_mut(pos));
 
-        let mut child = 2 * pos + 1;
-        while child < end {
-            let right = child + 1;
-            if right < end && compare_idxs(v, child, right, compare) != Greater {
-                child = right;
-            }
-            let x = replace(&mut v[child], zeroed());
-            ptr::write(&mut v[pos], x);
+        let mut m_left = 4 * pos + 2;
+        while m_left < end {
+            let left = m_left - 1;
+            let m_right = m_left + 1;
+            let right = m_left + 2;
+            let largest_left = if compare_idxs(v, left, m_left, compare) == Less {
+                m_left
+            } else {
+                left
+            };
+            let largest_right = if right < end && compare_idxs(v, m_right, right, compare) == Less {
+                right
+            } else {
+                m_right
+            };
+            let child = if m_right < end && compare_idxs(v, largest_left, largest_right, compare) == Less {
+                largest_right
+            } else {
+                largest_left
+            };
+            let x = ptr::read(v.get_unchecked_mut(child));
+            ptr::write(v.get_unchecked_mut(pos), x);
             pos = child;
-            child = 2 * pos + 1;
+            m_left = 4 * pos + 2;
+        }
+        let left = m_left - 1;
+        if left < end {
+            let x = ptr::read(v.get_unchecked_mut(left));
+            ptr::write(v.get_unchecked_mut(pos), x);
+            pos = left;
         }
 
-        ptr::write(&mut v[pos], new);
+        ptr::write(v.get_unchecked_mut(pos), new);
         siftup(v, start, pos, compare);
     }
 }
