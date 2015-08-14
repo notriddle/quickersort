@@ -3,6 +3,7 @@ use std::cmp::Ordering::*;
 use std::cmp::{min, max};
 use std::mem::{size_of, swap};
 use std::ptr;
+use unreachable::UncheckedOptionExt;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
@@ -241,79 +242,119 @@ pub fn heapsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     while end > 0 {
         end -= 1;
         v.swap(0, end as usize);
-        siftdown_range(v, 0, end as usize, compare);
+        Siftdown::siftdown_range(v, 0, end as usize, compare);
     }
 }
 
 fn heapify<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut n = (v.len() as isize).wrapping_sub(1) / 4;
     while n >= 0 {
-        siftdown(v, n as usize, compare);
+        Siftdown::siftdown(v, n as usize, compare);
         n -= 1;
     }
 }
 
-fn siftup<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], start: usize, mut pos: usize, compare: &C) {
-    unsafe {
-        let new = ptr::read(v.get_unchecked_mut(pos));
+struct Siftup<'a, T: 'a> {
+    new: Option<T>,
+    v: &'a mut [T],
+    pos: usize,
+}
 
-        let mut parent = pos.wrapping_sub(1) / 4;
-
-        while pos > start && compare(&new, v.get_unchecked(parent)) == Greater {
-            let x = ptr::read(v.get_unchecked_mut(parent));
-            ptr::write(v.get_unchecked_mut(pos), x);
-            pos = parent;
-            parent = pos.wrapping_sub(1) / 4;
+impl<'a, T: 'a> Siftup<'a, T> {
+    fn siftup<C: Fn(&T, &T) -> Ordering>(v_: &mut [T], start: usize, pos_: usize, compare: &C) {
+        unsafe {
+            let mut this = Siftup{
+                new: Some(ptr::read(v_.get_unchecked_mut(pos_))),
+                v: v_,
+                pos: pos_,
+            };
+            let mut parent = this.pos.wrapping_sub(1) / 4;
+            while this.pos > start && compare(this.new.as_ref().unchecked_unwrap(), this.v.get_unchecked(parent)) == Greater {
+                let x = ptr::read(this.v.get_unchecked_mut(parent));
+                ptr::write(this.v.get_unchecked_mut(this.pos), x);
+                this.pos = parent;
+                parent = this.pos.wrapping_sub(1) / 4;
+            }
+            // siftup dropped here
         }
-        ptr::write(v.get_unchecked_mut(pos), new);
     }
 }
 
-fn siftdown_range<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], mut pos: usize, end: usize, compare: &C) {
-    unsafe {
-        let start = pos;
-        let new = ptr::read(v.get_unchecked_mut(pos));
+impl<'a, T: 'a> Drop for Siftup<'a, T> {
+    fn drop(&mut self) {
+        unsafe {
+            ptr::copy(self.new.as_ref().unchecked_unwrap(), self.v.get_unchecked_mut(self.pos), 1);
+            ptr::write(&mut self.new, None);
+        }
+    }
+}
 
-        let mut m_left = 4 * pos + 2;
-        while m_left < end {
+struct Siftdown<'a, T: 'a> {
+    new: Option<T>,
+    v: &'a mut [T],
+    pos: usize,
+}
+
+impl<'a, T: 'a> Siftdown<'a, T> {
+    fn siftdown_range<C: Fn(&T, &T) -> Ordering>(v_: &mut [T], pos_: usize, end: usize, compare: &C) {
+        let pos = unsafe {
+            let mut this = Siftdown{
+                new: Some(ptr::read(v_.get_unchecked_mut(pos_))),
+                v: v_,
+                pos: pos_,
+            };
+
+            let mut m_left = 4 * this.pos + 2;
+            while m_left < end {
+                let left = m_left - 1;
+                let m_right = m_left + 1;
+                let right = m_left + 2;
+                let largest_left = if compare_idxs(this.v, left, m_left, compare) == Less {
+                    m_left
+                } else {
+                    left
+                };
+                let largest_right = if right < end && compare_idxs(this.v, m_right, right, compare) == Less {
+                    right
+                } else {
+                    m_right
+                };
+                let child = if m_right < end && compare_idxs(this.v, largest_left, largest_right, compare) == Less {
+                    largest_right
+                } else {
+                    largest_left
+                };
+                let x = ptr::read(this.v.get_unchecked_mut(child));
+                ptr::write(this.v.get_unchecked_mut(this.pos), x);
+                this.pos = child;
+                m_left = 4 * this.pos + 2;
+            }
             let left = m_left - 1;
-            let m_right = m_left + 1;
-            let right = m_left + 2;
-            let largest_left = if compare_idxs(v, left, m_left, compare) == Less {
-                m_left
-            } else {
-                left
-            };
-            let largest_right = if right < end && compare_idxs(v, m_right, right, compare) == Less {
-                right
-            } else {
-                m_right
-            };
-            let child = if m_right < end && compare_idxs(v, largest_left, largest_right, compare) == Less {
-                largest_right
-            } else {
-                largest_left
-            };
-            let x = ptr::read(v.get_unchecked_mut(child));
-            ptr::write(v.get_unchecked_mut(pos), x);
-            pos = child;
-            m_left = 4 * pos + 2;
-        }
-        let left = m_left - 1;
-        if left < end {
-            let x = ptr::read(v.get_unchecked_mut(left));
-            ptr::write(v.get_unchecked_mut(pos), x);
-            pos = left;
-        }
+            if left < end {
+                let x = ptr::read(this.v.get_unchecked_mut(left));
+                ptr::write(this.v.get_unchecked_mut(this.pos), x);
+                this.pos = left;
+            }
 
-        ptr::write(v.get_unchecked_mut(pos), new);
-        siftup(v, start, pos, compare);
+            this.pos
+            // this dropped here
+        };
+        Siftup::siftup(v_, pos_, pos, compare);
+    }
+
+    fn siftdown<C: Fn(&T, &T) -> Ordering>(v: &mut [T], pos: usize, compare: &C) {
+        let len = v.len();
+        Siftdown::siftdown_range(v, pos, len, compare);
     }
 }
 
-fn siftdown<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], pos: usize, compare: &C) {
-    let len = v.len();
-    siftdown_range(v, pos, len, compare);
+impl<'a, T: 'a> Drop for Siftdown<'a, T> {
+    fn drop(&mut self) {
+        unsafe {
+            ptr::copy(self.new.as_ref().unchecked_unwrap(), self.v.get_unchecked_mut(self.pos), 1);
+            ptr::write(&mut self.new, None);
+        }
+    }
 }
 
 fn log2(x: usize) -> u32 {

@@ -1,4 +1,3 @@
-#[cfg(feature  = "float")]
 extern crate unreachable;
 #[cfg(feature  = "float")]
 extern crate num;
