@@ -1,3 +1,6 @@
+// (C) 2015 Viktor Dahl <pazaconyoman@gmail.com>
+// This file is licensed under the same terms as Rust itself.
+
 extern crate unreachable;
 #[cfg(feature  = "float")]
 extern crate num;

@@ -1,3 +1,7 @@
+// (C) 2015 Viktor Dahl <pazaconyoman@gmail.com>
+// (C) 2015 Michael Howell <michael@notriddle.com>
+// This file is licensed under the same terms as Rust itself.
+
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::cmp::{min, max};

@@ -1,3 +1,6 @@
+// (C) 2015 Michael Howell <michael@notriddle.com>
+// This file is licensed under the same terms as Rust itself.
+
 extern crate quickersort;
 extern crate rand;
 extern crate time;
