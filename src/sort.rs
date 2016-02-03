@@ -133,8 +133,8 @@ fn dual_pivot_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], pivots: (usize, us
 
     unsafe {
         // Skip elements that are already in the correct position
-        while compare_idxs(v, lesser, lp, compare) == Less { lesser += 1; }
-        while compare_idxs(v, greater, rp, compare) == Greater { greater -= 1; }
+        while lesser <= greater && compare_idxs(v, lesser, lp, compare) == Less { lesser += 1; }
+        while lesser <= greater && compare_idxs(v, greater, rp, compare) == Greater { greater -= 1; }
 
         let mut k = lesser;
         // XXX We make some unecessary swaps since we can't leave uninitialized values
