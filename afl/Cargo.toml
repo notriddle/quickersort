@@ -1,0 +1,15 @@
+[package]
+name = "quickersort-afl"
+version = "0.0.1"
+authors = [ "Michael Howell <michael@notriddle.com>" ]
+description = "Test that quickersort never goes stupid."
+license = "MIT / Apache-2.0"
+repository = "https://github.com/notriddle/quickersort"
+
+[dependencies]
+afl = "0.1"
+afl-plugin = "0.1"
+
+[dependencies.quickersort]
+path = "../"
+
