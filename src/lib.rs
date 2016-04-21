@@ -3,7 +3,7 @@
 
 extern crate unreachable;
 #[cfg(feature  = "float")]
-extern crate num;
+extern crate num_traits;
 
 pub use sort::{sort, sort_by, insertion_sort, heapsort};
 #[cfg(feature = "float")]

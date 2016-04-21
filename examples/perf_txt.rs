@@ -4,13 +4,13 @@
 extern crate quickersort;
 extern crate rand;
 extern crate time;
-extern crate num;
+extern crate num_traits;
 
 use std::cmp::min;
 use std::fmt::{self, Display, Formatter};
 use std::mem::size_of;
 use rand::{weak_rng, Rng};
-use num::traits::PrimInt;
+use num_traits::PrimInt;
 
 #[derive(Copy,Clone)]
 enum Algorithm {

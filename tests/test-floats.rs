@@ -2,13 +2,13 @@ extern crate quickersort;
 extern crate rand;
 
 #[cfg(feature = "float")]
-extern crate num;
+extern crate num_traits;
 
 #[cfg(feature = "float")]
 mod bench {
 
 use std::f64;
-use num::traits::{ToPrimitive};
+use num_traits::{ToPrimitive};
 use quickersort::{sort_floats};
 use rand::{Rng, weak_rng};
 

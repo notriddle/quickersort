@@ -15,7 +15,7 @@ unreachable = "0.0.2"
 
 [features]
 default = [ "float" ]
-float = [ "num" ]
+float = [ "num-traits" ]
 
 [lib]
 name = "quickersort"
@@ -23,8 +23,8 @@ path = "src/lib.rs"
 test = false
 bench = false
 
-[dependencies.num]
-version = "0.1.25"
+[dependencies.num-traits]
+version = "0.1.32"
 optional = true
 
 [dev-dependencies]
