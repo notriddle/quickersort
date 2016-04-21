@@ -3,7 +3,7 @@
 // This file is licensed under the same terms as Rust itself.
 
 use super::sort::{sort_by};
-use num::{Float,zero};
+use num_traits::{Float};
 use unreachable::unreachable;
 
 /// Sorts floating point number.
@@ -56,7 +56,7 @@ pub fn sort_floats<T: Float>(v: &mut [T]) {
     let mut zeros = 0;
     let mut neg_zeros = 0;
     for x in v[left..].iter() {
-        if *x != zero() {
+        if *x != T::zero() {
             break;
         }
         if x.is_sign_negative() {
@@ -70,7 +70,7 @@ pub fn sort_floats<T: Float>(v: &mut [T]) {
             *x = Float::neg_zero();
             neg_zeros -= 1;
         } else if zeros > 0 {
-             *x = zero();
+             *x = T::zero();
              zeros -= 1;
         } else {
             break;
@@ -87,14 +87,14 @@ fn find_first_zero<T: Float>(v: &[T]) -> usize {
 
     while left < hi {
         let mid = ((hi - left) / 2) + left;
-        if v[mid] < zero() {
+        if v[mid] < T::zero() {
             left = mid + 1;
         } else {
             hi = mid;
         }
     }
 
-    while left < v.len() && v[left] < zero() {
+    while left < v.len() && v[left] < T::zero() {
         left += 1;
     }
     return left;
