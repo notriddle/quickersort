@@ -1,3 +1,11 @@
+2.0.0
+-----
+
+ * Use the new standalone `num_traits` crate. Because it's a part of the
+   external API, this is a breaking change.
+ * Prevent broken comparators from forcing the sorting algorithm to index
+   out-of-bounds.
+
 1.1.0
 -----
 
