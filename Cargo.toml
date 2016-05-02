@@ -12,7 +12,7 @@ documentation = "https://www.notriddle.com/rustdoc/quickersort/index.html"
 readme = "README.md"
 
 [dependencies]
-unreachable = "0.0.2"
+unreachable = "0.1"
 
 [features]
 default = [ "float" ]
