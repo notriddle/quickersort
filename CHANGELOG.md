@@ -1,3 +1,8 @@
+2.0.1
+-----
+ * Update unreachable.
+
+
 2.0.0
 -----
 
@@ -5,6 +10,7 @@
    external API, this is a breaking change.
  * Prevent broken comparators from forcing the sorting algorithm to index
    out-of-bounds.
+
 
 1.1.0
 -----

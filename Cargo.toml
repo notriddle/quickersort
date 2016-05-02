@@ -1,6 +1,6 @@
 [package]
 name = "quickersort"
-version = "2.0.0"
+version = "2.0.1"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>" ]
 description = """
 Fast sorting compatible with stable Rust.
