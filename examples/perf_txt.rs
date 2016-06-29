@@ -3,7 +3,6 @@
 
 extern crate quickersort;
 extern crate rand;
-extern crate time;
 extern crate num_traits;
 
 use std::cmp::min;
@@ -88,16 +87,17 @@ fn generate_int(pattern: Pattern, variant: Variant, size: usize, m: usize) -> Ve
 }
 
 fn run_test(algorithm: Algorithm, pattern: Pattern, variant: Variant, size: usize, m: usize) -> f64 {
-    const TRIAL_COUNT: i64 = 256;
+    const TRIAL_COUNT: u64 = 256;
     let mut time = 0;
     for _ in 0 .. TRIAL_COUNT {
         let mut v = generate_int(pattern, variant, size, m);
-        let start = time::PreciseTime::now();
+        let start = std::time::Instant::now();
         match algorithm {
             Algorithm::Std => v.sort(),
             Algorithm::Quickersort => quickersort::sort(&mut v),
         }
-        time += start.to(time::PreciseTime::now()).num_nanoseconds().unwrap();
+        let elapsed = start.elapsed();
+        time += elapsed.as_secs() * 1000_000_000 + elapsed.subsec_nanos() as u64;
     }
     let duration = time / TRIAL_COUNT;
     size as f64 / (duration as f64 / 1000f64)
