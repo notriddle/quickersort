@@ -26,6 +26,10 @@ pub fn sort_by<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     do_introsort(v, compare, 0, heapsort_depth);
 }
 
+pub fn sort_by_key<T, K: Ord, F: Fn(&T) -> K>(v: &mut [T], key: F) {
+    sort_by(v, &|a, b| key(a).cmp(&key(b)));
+}
+
 pub fn sort<T: Ord>(v: &mut [T]) {
     sort_by(v, &|a, b| a.cmp(b));
 }
