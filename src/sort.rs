@@ -26,6 +26,30 @@ pub fn sort_by<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     do_introsort(v, compare, 0, heapsort_depth);
 }
 
+/// Sort using a conversion function.
+///
+/// # Example
+///
+///     #[derive(Debug, Eq, PartialEq)]
+///     struct Selector {
+///         specificity: u32,
+///         source_order: u32,
+///     }
+///     let mut selectors_scrambled = [
+///         Selector{ specificity: 1, source_order: 5 },
+///         Selector{ specificity: 1, source_order: 4 },
+///         Selector{ specificity: 3, source_order: 1 },
+///     ];
+///     let selectors_sorted = [
+///         Selector{ specificity: 1, source_order: 4 },
+///         Selector{ specificity: 1, source_order: 5 },
+///         Selector{ specificity: 3, source_order: 1 },
+///     ];
+///     ::quickersort::sort_by_key(
+///         &mut selectors_scrambled,
+///         |a| (a.specificity, a.source_order)
+///     );
+///     assert_eq!(selectors_scrambled, selectors_sorted);
 pub fn sort_by_key<T, K: Ord, F: Fn(&T) -> K>(v: &mut [T], key: F) {
     sort_by(v, &|a, b| key(a).cmp(&key(b)));
 }
