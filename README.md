@@ -15,7 +15,7 @@ with stable Rust (and, thus, does not work with `#[no_std]`).
 To use with cargo, add the following to your `Cargo.toml`:
 ```toml
 [dependencies]
-quickersort = "1.0.0"
+quickersort = "2.1.0"
 ```
 and in your crate root, add
 ```rust
