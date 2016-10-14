@@ -1,3 +1,15 @@
+2.1.1
+-----
+
+ * Fix documentation typos.
+
+
+2.1.0
+-----
+
+ * Add the `sort_by_key` function.
+
+
 2.0.1
 -----
  * Update unreachable.
