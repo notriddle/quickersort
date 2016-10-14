@@ -13,11 +13,14 @@ with stable Rust (and, thus, does not work with `#[no_std]`).
 [veddan/rust-introsort]: https://github.com/veddan/rust-introsort
 
 To use with cargo, add the following to your `Cargo.toml`:
+
 ```toml
 [dependencies]
 quickersort = "2.1.0"
 ```
+
 and in your crate root, add
+
 ```rust
 extern crate quickersort;
 ```
@@ -26,6 +29,7 @@ extern crate quickersort;
 The interface is similar to the standard library `sort` and `sort_by` functions.
 
 An example:
+
 ```rust
 extern crate quickersort;
 
@@ -67,7 +71,9 @@ For sorted data, introsort is ~4-5 times faster, and for data with few unique va
 The crate, if built with the "float" feature (which is the default), also includes a `sort_floats` function.
 Floating point numbers are not `Ord`, only `PartialOrd`, so `sort` can not be used on them.
 The ordering used by `sort_floats` is
+
 ```
 | -inf | < 0 | -0 | +0 | > 0 | +inf | NaN |
 ```
+
 `sort_floats` is much more efficient than passing a comparator function implementing this ordering to `sort_by`.
