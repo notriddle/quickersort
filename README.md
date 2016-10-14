@@ -27,7 +27,7 @@ The interface is similar to the standard library `sort` and `sort_by` functions.
 
 An example:
 ```rust
-extern crate quickerosort;
+extern crate quickersort;
 
 fn main() {
     let mut ss = vec!["Introsort", "or", "introspective", "sort", "is",
@@ -71,4 +71,3 @@ The ordering used by `sort_floats` is
 | -inf | < 0 | -0 | +0 | > 0 | +inf | NaN |
 ```
 `sort_floats` is much more efficient than passing a comparator function implementing this ordering to `sort_by`.
-
