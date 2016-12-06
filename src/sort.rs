@@ -144,11 +144,10 @@ pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
 }
 
 struct DualPivotSort<'a, T: 'a> {
-    left: usize,
+    p1: usize,
     pivot1: NoDrop<T>,
-    middle: usize,
+    p2: usize,
     pivot2: NoDrop<T>,
-    right: usize,
     v: &'a mut [T],
 }
 
@@ -160,67 +159,69 @@ impl<'a, T: 'a> DualPivotSort<'a, T> {
             if compare_idxs(v, p1, p2, compare) == Greater {
                 unsafe_swap(v, p1, p2);
             }
-            // We use a "guard struct" to make sure we replace the pivots if we unwind.
-            let mut this = DualPivotSort{
-                left: 0,
-                pivot1: NoDrop::new(ptr::read(v.get_unchecked(p1))),
-                middle: 0,
-                pivot2: NoDrop::new(ptr::read(v.get_unchecked(p2))),
-                right: v.len() - 1,
-                v: v,
-            };
             // Move the leftmost and rightmost list elements into the spots formerly occupied by the pivots.
             // This leaves `v[0]` and `v[n-1]` logically uninitialized.
             // Those gaps get filled back in by `DualPivotSort::Drop`.
-            ptr::copy(this.v.get_unchecked(this.left), this.v.get_unchecked_mut(p1), 1);
-            ptr::copy(this.v.get_unchecked(this.right), this.v.get_unchecked_mut(p2), 1);
-            this.left += 1;
-            this.right -= 1;
+            // If `compare` unwinds, we'll put the items in p1 and p2 back into 0 and len()-1,
+            // otherwise p1 and p2 will be replaced with the last locations in the leftmost and rightmost
+            // partitions, where the pivots will be placed.
+            let mut this = DualPivotSort{
+                p1: p1,
+                pivot1: NoDrop::new(ptr::read(v.get_unchecked(p1))),
+                p2: p2,
+                pivot2: NoDrop::new(ptr::read(v.get_unchecked(p2))),
+                v: v,
+            };
+            ptr::copy(this.v.get_unchecked(0), this.v.get_unchecked_mut(p1), 1);
+            ptr::copy(this.v.get_unchecked(this.v.len() - 1), this.v.get_unchecked_mut(p2), 1);
             // Start partitioning:
-            while this.left < this.v.len() - 1 && compare(this.v.get_unchecked(this.left), &*this.pivot1) == Less { this.left += 1; }
-            while this.right > 0 && compare(this.v.get_unchecked(this.right), &*this.pivot2) == Greater { this.right -= 1; }
+            let (mut l, mut r) = (1, this.v.len() - 2);
+            while l < this.v.len() - 1 && compare(this.v.get_unchecked(l), &*this.pivot1) == Less { l += 1; }
+            while r > 0 && compare(this.v.get_unchecked(r), &*this.pivot2) == Greater { r -= 1; }
             // The invariant has been established, and shall now be maintained.
             let v = &mut *this.v;
             let p1 = &*this.pivot1;
             let p2 = &*this.pivot2;
-            this.middle = this.left;
-            while this.middle <= this.right {
-                debug_assert!(this.left != 0);
-                debug_assert!(this.left <= this.middle);
-                debug_assert!(this.left == this.middle || this.left < this.right);
-                debug_assert!(this.right != v.len() - 1);
-                debug_assert!(this.middle < v.len() && this.right < v.len() && this.left < v.len());
+            let mut m = l;
+            while m <= r {
+                debug_assert!(l != 0);
+                debug_assert!(l <= m);
+                debug_assert!(l == m || l < r);
+                debug_assert!(r != v.len() - 1);
+                debug_assert!(m < v.len() && r < v.len() && l < v.len());
                 if cfg!(feature="assert_working_compare") {
-                    debug_assert!(this.left == this.middle || compare(&v[this.left], p1) != Less);
-                    debug_assert!(this.left == 1 || compare(&v[this.left-1], p1) != Greater);
-                    debug_assert!(this.left <= 2 || compare(&v[this.left-2], p1) != Greater);
-                    debug_assert!(compare(&v[this.right], p2) != Greater);
-                    debug_assert!(this.right == v.len() - 2 || compare(&v[this.right+1], p2) != Less);
-                    debug_assert!(this.right >= v.len() - 3 || compare(&v[this.right+2], p2) != Less);
+                    debug_assert!(l == m || compare(&v[l], p1) != Less);
+                    debug_assert!(l == 1 || compare(&v[l-1], p1) != Greater);
+                    debug_assert!(l <= 2 || compare(&v[l-2], p1) != Greater);
+                    debug_assert!(compare(&v[r], p2) != Greater);
+                    debug_assert!(r == v.len() - 2 || compare(&v[r+1], p2) != Less);
+                    debug_assert!(r >= v.len() - 3 || compare(&v[r+2], p2) != Less);
                 }
-                let middle = NoDrop::new(ptr::read(v.get_unchecked(this.middle)));
+                let middle = NoDrop::new(ptr::read(v.get_unchecked(m)));
                 let middle = &*middle;
                 if compare(middle, p1) == Less {
-                    ptr::copy(v.get_unchecked(this.left), v.get_unchecked_mut(this.middle), 1);
-                    ptr::copy(middle, v.get_unchecked_mut(this.left), 1);
-                    this.left += 1;
+                    ptr::copy(v.get_unchecked(l), v.get_unchecked_mut(m), 1);
+                    ptr::copy(middle, v.get_unchecked_mut(l), 1);
+                    l += 1;
                 } else if compare(middle, p2) == Greater {
-                    if compare(v.get_unchecked(this.right), p1) == Less {
-                        ptr::copy(v.get_unchecked(this.left), v.get_unchecked_mut(this.middle), 1);
-                        ptr::copy(v.get_unchecked(this.right), v.get_unchecked_mut(this.left), 1);
-                        this.left += 1;
+                    if compare(v.get_unchecked(r), p1) == Less {
+                        ptr::copy(v.get_unchecked(l), v.get_unchecked_mut(m), 1);
+                        ptr::copy(v.get_unchecked(r), v.get_unchecked_mut(l), 1);
+                        l += 1;
                     } else {
-                        ptr::copy(v.get_unchecked(this.right), v.get_unchecked_mut(this.middle), 1);
+                        ptr::copy(v.get_unchecked(r), v.get_unchecked_mut(m), 1);
                     }
-                    ptr::copy(middle, v.get_unchecked_mut(this.right), 1);
-                    this.right -= 1;
-                    while this.middle <= this.right && compare(v.get_unchecked(this.right), p2) == Greater {
-                        this.right -= 1;
+                    ptr::copy(middle, v.get_unchecked_mut(r), 1);
+                    r -= 1;
+                    while m <= r && compare(v.get_unchecked(r), p2) == Greater {
+                        r -= 1;
                     }
                 }
-                this.middle += 1;
+                m += 1;
             }
-            (this.left, this.right)
+            this.p1 = l - 1;
+            this.p2 = r + 1;
+            (l, r)
             // DualPivotSort dropped here
         };
         let left_pivot = left - 1;
@@ -247,10 +248,10 @@ impl<'a, T: 'a> DualPivotSort<'a, T> {
     }
     unsafe fn write_pivots(&mut self) {
         let n = self.v.len();
-        ptr::copy(self.v.get_unchecked(self.left - 1), self.v.get_unchecked_mut(0), 1);
-        ptr::copy(&*self.pivot1, self.v.get_unchecked_mut(self.left - 1), 1);
-        ptr::copy(self.v.get_unchecked(self.right + 1), self.v.get_unchecked_mut(n - 1), 1);
-        ptr::copy(&*self.pivot2, self.v.get_unchecked_mut(self.right + 1), 1);
+        ptr::copy(self.v.get_unchecked(self.p1), self.v.get_unchecked_mut(0), 1);
+        ptr::copy(&*self.pivot1, self.v.get_unchecked_mut(self.p1), 1);
+        ptr::copy(self.v.get_unchecked(self.p2), self.v.get_unchecked_mut(n - 1), 1);
+        ptr::copy(&*self.pivot2, self.v.get_unchecked_mut(self.p2), 1);
     }
 }
 
