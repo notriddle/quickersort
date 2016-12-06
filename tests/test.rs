@@ -53,6 +53,7 @@ fn test_insertion_sort() {
 }
 
 #[test]
+#[cfg(not(feature="assert_working_compare"))]
 fn test_always_less() {
     let mut v = vec![];
     for _ in 0 .. 256 {
@@ -62,6 +63,7 @@ fn test_always_less() {
 }
 
 #[test]
+#[cfg(not(feature="assert_working_compare"))]
 fn test_always_greater() {
     let mut v = vec![];
     for _ in 0 .. 256 {
