@@ -20,6 +20,14 @@ const MAX_INSERTION_SORT_ELEMS: usize = 42;
 /// Higher values give more insertion sorted elements.
 const INSERTION_SORT_FACTOR: usize = 450;
 
+/// Sort using a comparison function.
+///
+/// # Example
+///
+///     let mut unsorted = [1, 3, 9, 2, 6, 5];
+///     let sorted = [9, 6, 5, 3, 2, 1];
+///     ::quickersort::sort_by(&mut unsorted, &|a, b| b.cmp(a));
+///     assert_eq!(unsorted, sorted);
 pub fn sort_by<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
@@ -54,6 +62,7 @@ pub fn sort_by_key<T, K: Ord, F: Fn(&T) -> K>(v: &mut [T], key: F) {
     sort_by(v, &|a, b| key(a).cmp(&key(b)));
 }
 
+/// Sort using the default comparison function.
 pub fn sort<T: Ord>(v: &mut [T]) {
     sort_by(v, &|a, b| a.cmp(b));
 }
