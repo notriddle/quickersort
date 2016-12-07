@@ -20,6 +20,10 @@ const MAX_INSERTION_SORT_ELEMS: usize = 42;
 /// Higher values give more insertion sorted elements.
 const INSERTION_SORT_FACTOR: usize = 450;
 
+/// Maximum number of swaps to attempt before falling back
+/// on quicksort.
+const INSERTION_SORTED_CAP: usize = 8;
+
 /// Sort using a comparison function.
 ///
 /// # Example
@@ -74,9 +78,10 @@ fn introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, h
 
 fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     macro_rules! maybe_swap(
-        ($v: expr, $a: expr, $b: expr, $compare: expr) => {
+        ($v: expr, $a: expr, $b: expr, $compare: expr, $swapped: ident) => {
             if compare_idxs($v, *$a, *$b, $compare) == Greater {
                 swap($a, $b);
+                $swapped = true;
             }
         }
     );
@@ -99,18 +104,24 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
     let mut e1 = e3 - 2*seventh;
     let mut e4 = e3 + seventh;
     let mut e5 = e3 + 2*seventh;
+    let mut swapped = false;
 
     // Sort them with a sorting network.
     unsafe {
-        maybe_swap!(v, &mut e1, &mut e2, compare);
-        maybe_swap!(v, &mut e4, &mut e5, compare);
-        maybe_swap!(v, &mut e3, &mut e5, compare);
-        maybe_swap!(v, &mut e3, &mut e4, compare);
-        maybe_swap!(v, &mut e2, &mut e5, compare);
-        maybe_swap!(v, &mut e1, &mut e4, compare);
-        maybe_swap!(v, &mut e1, &mut e3, compare);
-        maybe_swap!(v, &mut e2, &mut e4, compare);
-        maybe_swap!(v, &mut e2, &mut e3, compare);
+        maybe_swap!(v, &mut e1, &mut e2, compare, swapped);
+        maybe_swap!(v, &mut e4, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e3, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e3, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e1, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e1, &mut e3, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e3, compare, swapped);
+    }
+
+    // If the input appears partially sorted, try an insertion sort.
+    if !swapped && capped_insertion_sort(v, compare) {
+        return;
     }
 
     // Dual-pivot quicksort behaves very poorly if both pivots are equal.
@@ -137,6 +148,25 @@ fn maybe_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) 
         return true;
     }
     return false;
+}
+
+fn capped_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) -> bool {
+    let mut i = 1;
+    let mut cap = INSERTION_SORTED_CAP;
+    let n = v.len();
+    while i < n {
+        let mut j = i;
+        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
+            unsafe { unsafe_swap(v, j, j-1); }
+            cap -= 1;
+            j -= 1;
+            if cap == 0 {
+                return false;
+            }
+        }
+        i += 1;
+    }
+    true
 }
 
 pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
