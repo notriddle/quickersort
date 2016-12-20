@@ -7,8 +7,7 @@
 
 This is an implementation of the introsort sorting algorithm.
 
-Credit where it is due, this is a fork of [veddan/rust-introsort], that works
-with stable Rust (and, thus, does not work with `#[no_std]`).
+This is a fork of [veddan/rust-introsort], with a number of improvements.
 
 [veddan/rust-introsort]: https://github.com/veddan/rust-introsort
 
