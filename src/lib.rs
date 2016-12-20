@@ -2,6 +2,7 @@
 // This file is licensed under the same terms as Rust itself.
 
 extern crate unreachable;
+extern crate nodrop;
 #[cfg(feature  = "float")]
 extern crate num_traits;
 

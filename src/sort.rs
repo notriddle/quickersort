@@ -2,12 +2,12 @@
 // (C) 2015 Michael Howell <michael@notriddle.com>
 // This file is licensed under the same terms as Rust itself.
 
+use nodrop::NoDrop;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 use std::cmp::{min, max};
 use std::mem::{size_of, swap};
 use std::ptr;
-use unreachable::UncheckedOptionExt;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
@@ -20,6 +20,18 @@ const MAX_INSERTION_SORT_ELEMS: usize = 42;
 /// Higher values give more insertion sorted elements.
 const INSERTION_SORT_FACTOR: usize = 450;
 
+/// Maximum number of swaps to attempt before falling back
+/// on quicksort.
+const INSERTION_SORTED_CAP: usize = 8;
+
+/// Sort using a comparison function.
+///
+/// # Example
+///
+///     let mut unsorted = [1, 3, 9, 2, 6, 5];
+///     let sorted = [9, 6, 5, 3, 2, 1];
+///     ::quickersort::sort_by(&mut unsorted, &|a, b| b.cmp(a));
+///     assert_eq!(unsorted, sorted);
 pub fn sort_by<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     if maybe_insertion_sort(v, compare) { return; }
     let heapsort_depth = (3 * log2(v.len())) / 2;
@@ -54,6 +66,7 @@ pub fn sort_by_key<T, K: Ord, F: Fn(&T) -> K>(v: &mut [T], key: F) {
     sort_by(v, &|a, b| key(a).cmp(&key(b)));
 }
 
+/// Sort using the default comparison function.
 pub fn sort<T: Ord>(v: &mut [T]) {
     sort_by(v, &|a, b| a.cmp(b));
 }
@@ -65,9 +78,10 @@ fn introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, h
 
 fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32, heapsort_depth: u32) {
     macro_rules! maybe_swap(
-        ($v: expr, $a: expr, $b: expr, $compare: expr) => {
+        ($v: expr, $a: expr, $b: expr, $compare: expr, $swapped: ident) => {
             if compare_idxs($v, *$a, *$b, $compare) == Greater {
                 swap($a, $b);
+                $swapped = true;
             }
         }
     );
@@ -90,29 +104,33 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
     let mut e1 = e3 - 2*seventh;
     let mut e4 = e3 + seventh;
     let mut e5 = e3 + 2*seventh;
+    let mut swapped = false;
 
     // Sort them with a sorting network.
     unsafe {
-        maybe_swap!(v, &mut e1, &mut e2, compare);
-        maybe_swap!(v, &mut e4, &mut e5, compare);
-        maybe_swap!(v, &mut e3, &mut e5, compare);
-        maybe_swap!(v, &mut e3, &mut e4, compare);
-        maybe_swap!(v, &mut e2, &mut e5, compare);
-        maybe_swap!(v, &mut e1, &mut e4, compare);
-        maybe_swap!(v, &mut e1, &mut e3, compare);
-        maybe_swap!(v, &mut e2, &mut e4, compare);
-        maybe_swap!(v, &mut e2, &mut e3, compare);
+        maybe_swap!(v, &mut e1, &mut e2, compare, swapped);
+        maybe_swap!(v, &mut e4, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e3, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e3, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e5, compare, swapped);
+        maybe_swap!(v, &mut e1, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e1, &mut e3, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e4, compare, swapped);
+        maybe_swap!(v, &mut e2, &mut e3, compare, swapped);
     }
 
-    if unsafe { compare_idxs(v, e1, e2, compare) != Equal &&
-                compare_idxs(v, e2, e3, compare) != Equal &&
-                compare_idxs(v, e3, e4, compare) != Equal &&
-                compare_idxs(v, e4, e5, compare) != Equal } {
-        // No consecutive pivot candidates are the same, meaning there is some variaton.
-        dual_pivot_sort(v, (e1, e2, e3, e4, e5), compare, rec, heapsort_depth);
+    // If the input appears partially sorted, try an insertion sort.
+    if !swapped && capped_insertion_sort(v, compare) {
+        return;
+    }
+
+    // Dual-pivot quicksort behaves very poorly if both pivots are equal.
+    // Use a single-pivot quicksort if they are.
+    if unsafe { compare_idxs(v, e2, e4, compare) != Equal } {
+        DualPivotSort::dual_pivot_sort(v, (e2, e4), compare, rec, heapsort_depth);
     } else {
-        // Two consecutive pivots candidates where the same.
-        // There are probably many similar elements.
+        // N.B. If compare() is a well-behaved total order,
+        // e3 must be equal to e2 and e4.
         single_pivot_sort(v, e3, compare, rec, heapsort_depth);
     }
 }
@@ -132,6 +150,25 @@ fn maybe_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) 
     return false;
 }
 
+fn capped_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) -> bool {
+    let mut i = 1;
+    let mut cap = INSERTION_SORTED_CAP;
+    let n = v.len();
+    while i < n {
+        let mut j = i;
+        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
+            unsafe { unsafe_swap(v, j, j-1); }
+            cap -= 1;
+            j -= 1;
+            if cap == 0 {
+                return false;
+            }
+        }
+        i += 1;
+    }
+    true
+}
+
 pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
@@ -145,62 +182,124 @@ pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     }
 }
 
-fn dual_pivot_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], pivots: (usize, usize, usize, usize, usize),
-                                                 compare: &C, rec: u32, heapsort_depth: u32) {
-    let (_, p1, _, p2, _) = pivots;
-    let n = v.len();
+struct DualPivotSort<'a, T: 'a> {
+    p1: usize,
+    pivot1: NoDrop<T>,
+    p2: usize,
+    pivot2: NoDrop<T>,
+    v: &'a mut [T],
+}
 
-    let lp = 0;
-    let rp = n - 1;
-
-    v.swap(p1, lp);
-    v.swap(p2, rp);
-
-    let mut lesser = 1;
-    let mut greater = n - 2;
-
-    unsafe {
-        // Skip elements that are already in the correct position
-        while lesser <= greater && compare_idxs(v, lesser, lp, compare) == Less { lesser += 1; }
-        while lesser <= greater && compare_idxs(v, greater, rp, compare) == Greater { greater -= 1; }
-
-        let mut k = lesser;
-        // XXX We make some unecessary swaps since we can't leave uninitialized values
-        // in `v` in case `compare` unwinds.
-        while k <= greater {
-            if compare_idxs(v, k, lp, compare) == Less {
-                unsafe_swap(v, k, lesser);
-                lesser += 1;
-            } else {
-                let cmp = compare_idxs(v, k, rp, compare);
-                if cmp == Greater || cmp == Equal {
-                    while k < greater && compare_idxs(v, greater, rp, compare) == Greater {
-                        greater -= 1;
+impl<'a, T: 'a> DualPivotSort<'a, T> {
+    fn dual_pivot_sort<C: Fn(&T, &T) -> Ordering>(v: &mut [T], (p1, p2): (usize, usize),
+                                                  compare: &C, rec: u32, heapsort_depth: u32) {
+        debug_assert!(v.len() > 9);
+        let (left, right) = unsafe {
+            if compare_idxs(v, p1, p2, compare) == Greater {
+                unsafe_swap(v, p1, p2);
+            }
+            // Move the leftmost and rightmost list elements into the spots formerly occupied by the pivots.
+            // This leaves `v[0]` and `v[n-1]` logically uninitialized.
+            // Those gaps get filled back in by `DualPivotSort::Drop`.
+            // If `compare` unwinds, we'll put the items in p1 and p2 back into 0 and len()-1,
+            // otherwise p1 and p2 will be replaced with the last locations in the leftmost and rightmost
+            // partitions, where the pivots will be placed.
+            let mut this = DualPivotSort{
+                p1: p1,
+                pivot1: NoDrop::new(ptr::read(v.get_unchecked(p1))),
+                p2: p2,
+                pivot2: NoDrop::new(ptr::read(v.get_unchecked(p2))),
+                v: v,
+            };
+            ptr::copy(this.v.get_unchecked(0), this.v.get_unchecked_mut(p1), 1);
+            ptr::copy(this.v.get_unchecked(this.v.len() - 1), this.v.get_unchecked_mut(p2), 1);
+            // Start partitioning:
+            let (mut l, mut r) = (1, this.v.len() - 2);
+            while l < this.v.len() - 1 && compare(this.v.get_unchecked(l), &*this.pivot1) == Less { l += 1; }
+            while r > 0 && compare(this.v.get_unchecked(r), &*this.pivot2) == Greater { r -= 1; }
+            // The invariant has been established, and shall now be maintained.
+            let v = &mut *this.v;
+            let p1 = &*this.pivot1;
+            let p2 = &*this.pivot2;
+            let mut m = l;
+            while m <= r {
+                debug_assert!(l != 0);
+                debug_assert!(l <= m);
+                debug_assert!(l == m || l < r);
+                debug_assert!(r != v.len() - 1);
+                debug_assert!(m < v.len() && r < v.len() && l < v.len());
+                if cfg!(feature="assert_working_compare") {
+                    debug_assert!(l == m || compare(&v[l], p1) != Less);
+                    debug_assert!(l == 1 || compare(&v[l-1], p1) != Greater);
+                    debug_assert!(l <= 2 || compare(&v[l-2], p1) != Greater);
+                    debug_assert!(compare(&v[r], p2) != Greater);
+                    debug_assert!(r == v.len() - 2 || compare(&v[r+1], p2) != Less);
+                    debug_assert!(r >= v.len() - 3 || compare(&v[r+2], p2) != Less);
+                }
+                let middle = NoDrop::new(ptr::read(v.get_unchecked(m)));
+                let middle = &*middle;
+                if compare(middle, p1) == Less {
+                    ptr::copy(v.get_unchecked(l), v.get_unchecked_mut(m), 1);
+                    ptr::copy(middle, v.get_unchecked_mut(l), 1);
+                    l += 1;
+                } else if compare(middle, p2) == Greater {
+                    if compare(v.get_unchecked(r), p1) == Less {
+                        ptr::copy(v.get_unchecked(l), v.get_unchecked_mut(m), 1);
+                        ptr::copy(v.get_unchecked(r), v.get_unchecked_mut(l), 1);
+                        l += 1;
+                    } else {
+                        ptr::copy(v.get_unchecked(r), v.get_unchecked_mut(m), 1);
                     }
-                    unsafe_swap(v, k, greater);
-                    greater -= 1;
-                    if compare_idxs(v, k, lp, compare) == Less {
-                        unsafe_swap(v, k, lesser);
-                        lesser += 1;
+                    ptr::copy(middle, v.get_unchecked_mut(r), 1);
+                    r -= 1;
+                    while m <= r && compare(v.get_unchecked(r), p2) == Greater {
+                        r -= 1;
                     }
                 }
+                m += 1;
             }
-            k += 1;
+            this.p1 = l - 1;
+            this.p2 = r + 1;
+            (l, r)
+            // DualPivotSort dropped here
+        };
+        let left_pivot = left - 1;
+        let right_pivot = right + 1;
+        debug_assert!(right_pivot > left_pivot);
+        if cfg!(feature="assert_working_compare") {
+            for item in &v[..left_pivot] {
+                debug_assert!(compare(item, &v[left_pivot]) != Greater);
+                debug_assert!(compare(item, &v[right_pivot]) != Greater);
+            }
+            for item in &v[left_pivot..right_pivot] {
+                debug_assert!(compare(item, &v[left_pivot]) != Less);
+                debug_assert!(compare(item, &v[right_pivot]) != Greater);
+            }
+            for item in &v[right_pivot..] {
+                debug_assert!(compare(item, &v[right_pivot]) != Less);
+                debug_assert!(compare(item, &v[left_pivot]) != Less);
+            }
+            debug_assert!(compare(&v[left_pivot], &v[right_pivot]) == Less);
+        }
+        introsort(&mut v[..left_pivot], compare, rec + 1, heapsort_depth);
+        introsort(&mut v[left_pivot + 1..right_pivot], compare, rec + 1, heapsort_depth);
+        introsort(&mut v[right_pivot + 1..], compare, rec + 1, heapsort_depth);
+    }
+    unsafe fn write_pivots(&mut self) {
+        let n = self.v.len();
+        ptr::copy(self.v.get_unchecked(self.p1), self.v.get_unchecked_mut(0), 1);
+        ptr::copy(&*self.pivot1, self.v.get_unchecked_mut(self.p1), 1);
+        ptr::copy(self.v.get_unchecked(self.p2), self.v.get_unchecked_mut(n - 1), 1);
+        ptr::copy(&*self.pivot2, self.v.get_unchecked_mut(self.p2), 1);
+    }
+}
+
+impl<'a, T: 'a> Drop for DualPivotSort<'a, T> {
+    fn drop(&mut self) {
+        unsafe {
+            self.write_pivots();
         }
     }
-
-    lesser -= 1;
-    greater += 1;
-
-    // Swap back pivots
-    unsafe {
-        unsafe_swap(v, lp, lesser);
-        unsafe_swap(v, rp, greater);
-    }
-
-    introsort(&mut v[..lesser], compare, rec + 1, heapsort_depth);
-    introsort(&mut v[lesser+1..greater], compare, rec + 1, heapsort_depth);
-    introsort(&mut v[greater+1..], compare, rec + 1, heapsort_depth);
 }
 
 fn single_pivot_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], pivot: usize, compare: &C, rec: u32, heapsort_depth: u32) {
@@ -287,7 +386,7 @@ fn heapify<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
 }
 
 struct Siftup<'a, T: 'a> {
-    new: Option<T>,
+    new: NoDrop<T>,
     v: &'a mut [T],
     pos: usize,
 }
@@ -296,12 +395,12 @@ impl<'a, T: 'a> Siftup<'a, T> {
     fn siftup<C: Fn(&T, &T) -> Ordering>(v_: &mut [T], start: usize, pos_: usize, compare: &C) {
         unsafe {
             let mut this = Siftup{
-                new: Some(ptr::read(v_.get_unchecked_mut(pos_))),
+                new: NoDrop::new(ptr::read(v_.get_unchecked_mut(pos_))),
                 v: v_,
                 pos: pos_,
             };
             let mut parent = this.pos.wrapping_sub(1) / 4;
-            while this.pos > start && compare(this.new.as_ref().unchecked_unwrap(), this.v.get_unchecked(parent)) == Greater {
+            while this.pos > start && compare(&*this.new, this.v.get_unchecked(parent)) == Greater {
                 let x = ptr::read(this.v.get_unchecked_mut(parent));
                 ptr::write(this.v.get_unchecked_mut(this.pos), x);
                 this.pos = parent;
@@ -315,14 +414,13 @@ impl<'a, T: 'a> Siftup<'a, T> {
 impl<'a, T: 'a> Drop for Siftup<'a, T> {
     fn drop(&mut self) {
         unsafe {
-            ptr::copy(self.new.as_ref().unchecked_unwrap(), self.v.get_unchecked_mut(self.pos), 1);
-            ptr::write(&mut self.new, None);
+            ptr::copy(&*self.new, self.v.get_unchecked_mut(self.pos), 1);
         }
     }
 }
 
 struct Siftdown<'a, T: 'a> {
-    new: Option<T>,
+    new: NoDrop<T>,
     v: &'a mut [T],
     pos: usize,
 }
@@ -331,7 +429,7 @@ impl<'a, T: 'a> Siftdown<'a, T> {
     fn siftdown_range<C: Fn(&T, &T) -> Ordering>(v_: &mut [T], pos_: usize, end: usize, compare: &C) {
         let pos = unsafe {
             let mut this = Siftdown{
-                new: Some(ptr::read(v_.get_unchecked_mut(pos_))),
+                new: NoDrop::new(ptr::read(v_.get_unchecked_mut(pos_))),
                 v: v_,
                 pos: pos_,
             };
@@ -383,8 +481,7 @@ impl<'a, T: 'a> Siftdown<'a, T> {
 impl<'a, T: 'a> Drop for Siftdown<'a, T> {
     fn drop(&mut self) {
         unsafe {
-            ptr::copy(self.new.as_ref().unchecked_unwrap(), self.v.get_unchecked_mut(self.pos), 1);
-            ptr::write(&mut self.new, None);
+            ptr::copy(&*self.new, self.v.get_unchecked_mut(self.pos), 1);
         }
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "quickersort"
-version = "2.1.1"
+version = "2.2.0"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>" ]
 description = """
 Fast sorting compatible with stable Rust.
@@ -11,22 +11,22 @@ repository = "https://github.com/notriddle/quickersort"
 documentation = "https://www.notriddle.com/rustdoc/quickersort/index.html"
 readme = "README.md"
 
-[dependencies]
-unreachable = "0.1"
-
-[features]
-default = [ "float" ]
-float = [ "num-traits" ]
-
 [lib]
 name = "quickersort"
 path = "src/lib.rs"
 test = false
 bench = false
 
-[dependencies.num-traits]
-version = "0.1.32"
-optional = true
+[dependencies]
+nodrop = "0.1"
+num-traits = { version = "0.1", optional = true }
+unreachable = "0.1"
+
+[features]
+default = [ "float" ]
+float = [ "num-traits" ]
+unstable = [ "nodrop/use_union" ]
+assert_working_compare = []
 
 [dev-dependencies]
 rand = "0.3.9"
@@ -34,4 +34,3 @@ itertools = "0.3.23"
 
 [profile.test]
 opt-level = 1
-

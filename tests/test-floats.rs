@@ -87,7 +87,6 @@ fn assert_floats_sorted(v: &[f64]) {
     };
     assert!(not_nans.windows(2).all(|w| {
         let (a, b) = (w[0], w[1]);
-        println!("{:?}, {:?}\t{}, {}", a, b, a.signum(), b.signum());
         a < b || (a == b && !(b.is_sign_negative() && a.is_sign_positive()))
     }));
     assert!(nans.iter().all(|x| x.is_nan()));
