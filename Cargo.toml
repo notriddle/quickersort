@@ -20,7 +20,10 @@ bench = false
 [dependencies]
 nodrop = "0.1"
 num-traits = { version = "0.1", optional = true }
-unreachable = "0.1"
+
+[dependencies.unreachable]
+version = "0.1"
+default-features = false
 
 [features]
 default = [ "float" ]

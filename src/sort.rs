@@ -2,12 +2,13 @@
 // (C) 2015 Michael Howell <michael@notriddle.com>
 // This file is licensed under the same terms as Rust itself.
 
+use core::cmp::Ordering;
+use core::cmp::Ordering::*;
+use core::cmp::{min, max};
+use core::mem::{size_of, swap};
+use core::ptr;
 use nodrop::NoDrop;
-use std::cmp::Ordering;
-use std::cmp::Ordering::*;
-use std::cmp::{min, max};
-use std::mem::{size_of, swap};
-use std::ptr;
+use unreachable::UncheckedOptionExt;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
