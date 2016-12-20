@@ -1,3 +1,13 @@
+2.2.0
+-----
+
+ * Add `#[no_std]` support, now that it's supported in Stable Rust.
+ * Use the pivot-selection-sorting-network to detect already-sorted sublists,
+   and use a capped insertion sort when they're truly that easy to handle.
+   This technique is credited to the LLVM project's libc++.
+ * Use `no_drop` to reduce the number of swaps in the dual-pivot partitioning
+   algorithm.
+
 2.1.1
 -----
 
