@@ -9,7 +9,7 @@ extern crate nodrop;
 #[cfg(feature  = "float")]
 extern crate num_traits;
 
-pub use sort::{sort, sort_by, sort_by_key, insertion_sort, heapsort};
+pub use sort::{sort, sort_by, sort_by_key, insertion_sort, heapsort, capped_dropmerge_sort};
 #[cfg(feature = "float")]
 pub use float::{sort_floats};
 

@@ -5,7 +5,7 @@
 use core::cmp::Ordering;
 use core::cmp::Ordering::*;
 use core::cmp::{min, max};
-use core::mem::{size_of, swap};
+use core::mem::{uninitialized, size_of, swap};
 use core::ptr;
 use nodrop::NoDrop;
 use unreachable::UncheckedOptionExt;
@@ -21,9 +21,13 @@ const MAX_INSERTION_SORT_ELEMS: usize = 42;
 /// Higher values give more insertion sorted elements.
 const INSERTION_SORT_FACTOR: usize = 450;
 
-/// Maximum number of swaps to attempt before falling back
+/// Maximum number of drops to attempt before falling back
 /// on quicksort.
-const INSERTION_SORTED_CAP: usize = 8;
+const DROPMERGE_SORTED_CAP: usize = 8;
+
+/// Maximum amount of look-ahead for the drop-merge sort.
+/// This needs to be smaller than the cap.
+const DROPMERGE_SORTED_MEMORY: usize = 4;
 
 /// Sort using a comparison function.
 ///
@@ -121,7 +125,7 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
     }
 
     // If the input appears partially sorted, try an insertion sort.
-    if !swapped && capped_insertion_sort(v, compare) {
+    if !swapped && capped_dropmerge_sort(v, compare) {
         return;
     }
 
@@ -151,25 +155,90 @@ fn maybe_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) 
     return false;
 }
 
-fn capped_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) -> bool {
-    let mut i = 1;
-    let mut cap = INSERTION_SORTED_CAP;
-    let n = v.len();
-    while i < n {
-        let mut j = i;
-        while j > 0 && unsafe { compare_idxs(v, j-1, j, compare) } == Greater {
-            unsafe { unsafe_swap(v, j, j-1); }
-            cap -= 1;
-            j -= 1;
-            if cap == 0 {
-                return false;
-            }
-        }
-        i += 1;
-    }
-    true
+struct CappedDropMergeSort<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> {
+    v: &'a mut [T],
+    c: &'a C,
+    read: usize,
+    write: usize,
+    dropped: NoDrop<[T; DROPMERGE_SORTED_CAP]>,
+    dropped_count: usize,
+    dropped_in_row: usize,
 }
 
+impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> Drop for CappedDropMergeSort<'a, T, C> {
+    fn drop(&mut self) {
+        if self.dropped_count != 0 {
+            // If we need to bail, either due to panic or running out of scratch space, do it here.
+            unsafe {
+                ptr::copy_nonoverlapping(self.dropped.as_ptr(), &mut self.v[self.write], self.dropped_count);
+            }
+        }
+    }
+}
+
+impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> CappedDropMergeSort<'a, T, C> {
+    unsafe fn capped_dropmerge_sort(&mut self) -> bool {
+        while self.read < self.v.len() {
+            if self.write == 0 || compare_idxs(self.v, self.read, self.write - 1, self.c) != Less {
+                // If we are in the correct order, just move over the top of the gap formed by removed items.
+                ptr::copy(self.v.get_unchecked(self.read), self.v.get_unchecked_mut(self.write), 1);
+                self.read += 1;
+                self.write += 1;
+                self.dropped_in_row = 0;
+            } else if self.dropped_in_row > DROPMERGE_SORTED_MEMORY {
+                // Revert dropping N items if we're over the drop_in_row cap.
+                self.dropped_count -= self.dropped_in_row;
+                self.read -= self.dropped_in_row;
+                self.write -= 1;
+                ptr::copy_nonoverlapping(self.v.get_unchecked(self.write), self.dropped.get_unchecked_mut(self.dropped_count), 1);
+                self.dropped_count += 1;
+                self.dropped_in_row = 0;
+            } else if self.dropped_count == DROPMERGE_SORTED_CAP {
+                // If we need to drop another item, and we're out of scratch space, bail out.
+                return false;
+            } else {
+                // Drop an item.
+                ptr::copy_nonoverlapping(self.v.get_unchecked(self.read), self.dropped.get_unchecked_mut(self.dropped_count), 1);
+                self.dropped_count += 1;
+                self.read += 1;
+                self.dropped_in_row += 1;
+            }
+        }
+        insertion_sort(&mut self.dropped[0 .. self.dropped_count], self.c);
+        let mut back = self.v.len();
+        while self.dropped_count != 0 {
+            let last_dropped = self.dropped.get_unchecked(self.dropped_count - 1);
+            while self.write > 0 && (self.c)(last_dropped, &self.v[self.write - 1]) == Less {
+                ptr::copy(&self.v[self.write - 1], &mut self.v[back - 1], 1);
+                back -= 1;
+                self.write -= 1;
+            }
+            ptr::copy_nonoverlapping(&self.dropped[self.dropped_count - 1], &mut self.v[back - 1], 1);
+            back -= 1;
+            self.dropped_count -= 1;
+        }
+        true
+    }
+}
+
+/// This is an implementation of drop-merge sort with a fixed allocation profile.
+/// It can handle `DROPMERGE_SORTED_CAP` number of out-of-order items,
+/// and has one slot of backtracking memory.
+pub fn capped_dropmerge_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) -> bool {
+    unsafe {
+        CappedDropMergeSort{
+            v: v,
+            c: compare,
+            read: 0,
+            write: 0,
+            dropped: NoDrop::new(uninitialized()),
+            dropped_count: 0,
+            dropped_in_row: 0,
+        }.capped_dropmerge_sort()
+    }
+}
+
+/// This is the fastest comparison sort we have for very, very short lists.
 pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
