@@ -86,7 +86,7 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
         ($v: expr, $a: expr, $b: expr, $compare: expr, $swapped: ident) => {
             if compare_idxs($v, *$a, *$b, $compare) == Greater {
                 swap($a, $b);
-                $swapped = true;
+                $swapped += 1;
             }
         }
     );
@@ -109,7 +109,7 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
     let mut e1 = e3 - 2*seventh;
     let mut e4 = e3 + seventh;
     let mut e5 = e3 + 2*seventh;
-    let mut swapped = false;
+    let mut swapped = 0;
 
     // Sort them with a sorting network.
     unsafe {
@@ -124,8 +124,13 @@ fn do_introsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C, rec: u32
         maybe_swap!(v, &mut e2, &mut e3, compare, swapped);
     }
 
-    // If the input appears partially sorted, try an insertion sort.
-    if !swapped && capped_dropmerge_sort(v, compare) {
+    // If the input appears to be reversed, reverse it back.
+    if swapped == 8 {
+        v.reverse();
+        swapped = 0;
+    }
+    // If the input appears partially sorted, try a drop-merge sort.
+    if swapped == 0 && capped_dropmerge_sort(v, compare) {
         return;
     }
 
