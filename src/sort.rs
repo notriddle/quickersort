@@ -179,6 +179,10 @@ impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> Drop for CappedDropMergeSort<'a,
 impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> CappedDropMergeSort<'a, T, C> {
     unsafe fn capped_dropmerge_sort(&mut self) -> bool {
         let len = self.v.len();
+        while self.read < len && compare_idxs(self.v, self.read, self.write - 1, self.c) != Less {
+            self.read += 1;
+            self.write += 1;
+        }
         while self.read < len {
             if self.write == 0 || compare_idxs(self.v, self.read, self.write - 1, self.c) != Less {
                 // If we are in the correct order, just move over the top of the gap formed by removed items.
