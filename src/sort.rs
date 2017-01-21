@@ -23,11 +23,11 @@ const INSERTION_SORT_FACTOR: usize = 450;
 
 /// Maximum number of drops to attempt before falling back
 /// on quicksort.
-const DROPMERGE_SORTED_CAP: usize = 8;
+const DROPMERGE_SORTED_CAP: usize = 10;
 
 /// Maximum amount of look-ahead for the drop-merge sort.
 /// This needs to be smaller than the cap.
-const DROPMERGE_SORTED_MEMORY: usize = 4;
+const DROPMERGE_SORTED_MEMORY: usize = 5;
 
 /// Sort using a comparison function.
 ///
@@ -178,7 +178,8 @@ impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> Drop for CappedDropMergeSort<'a,
 
 impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> CappedDropMergeSort<'a, T, C> {
     unsafe fn capped_dropmerge_sort(&mut self) -> bool {
-        while self.read < self.v.len() {
+        let len = self.v.len();
+        while self.read < len {
             if self.write == 0 || compare_idxs(self.v, self.read, self.write - 1, self.c) != Less {
                 // If we are in the correct order, just move over the top of the gap formed by removed items.
                 ptr::copy(self.v.get_unchecked(self.read), self.v.get_unchecked_mut(self.write), 1);
@@ -196,6 +197,13 @@ impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> CappedDropMergeSort<'a, T, C> {
             } else if self.dropped_count == DROPMERGE_SORTED_CAP {
                 // If we need to drop another item, and we're out of scratch space, bail out.
                 return false;
+            } else if self.dropped_in_row == 0 && self.write >= 2 && compare_idxs(self.v, self.read, self.write - 2, self.c) != Less {
+                // Quick undo: drop previously accepted element, and overwrite with the new one.
+                // This is an optimization; the algorithm is still correct without it.
+                ptr::copy_nonoverlapping(self.v.get_unchecked(self.write - 1), self.dropped.get_unchecked_mut(self.dropped_count), 1);
+                ptr::copy(self.v.get_unchecked(self.read), self.v.get_unchecked_mut(self.write - 1), 1);
+                self.dropped_count += 1;
+                self.read += 1;
             } else {
                 // Drop an item.
                 ptr::copy_nonoverlapping(self.v.get_unchecked(self.read), self.dropped.get_unchecked_mut(self.dropped_count), 1);
@@ -204,18 +212,20 @@ impl<'a, T: 'a, C: 'a + Fn(&T, &T) -> Ordering> CappedDropMergeSort<'a, T, C> {
                 self.dropped_in_row += 1;
             }
         }
-        insertion_sort(&mut self.dropped[0 .. self.dropped_count], self.c);
-        let mut back = self.v.len();
-        while self.dropped_count != 0 {
-            let last_dropped = self.dropped.get_unchecked(self.dropped_count - 1);
-            while self.write > 0 && (self.c)(last_dropped, &self.v[self.write - 1]) == Less {
-                ptr::copy(&self.v[self.write - 1], &mut self.v[back - 1], 1);
+        if self.dropped_count != 0 {
+            insertion_sort(&mut self.dropped[0 .. self.dropped_count], self.c);
+            let mut back = len;
+            while self.dropped_count != 0 {
+                let last_dropped = self.dropped.get_unchecked(self.dropped_count - 1);
+                while self.write > 0 && (self.c)(last_dropped, self.v.get_unchecked(self.write - 1)) == Less {
+                    ptr::copy(self.v.get_unchecked(self.write - 1), self.v.get_unchecked_mut(back - 1), 1);
+                    back -= 1;
+                    self.write -= 1;
+                }
+                ptr::copy_nonoverlapping(self.dropped.get_unchecked(self.dropped_count - 1), self.v.get_unchecked_mut(back - 1), 1);
                 back -= 1;
-                self.write -= 1;
+                self.dropped_count -= 1;
             }
-            ptr::copy_nonoverlapping(&self.dropped[self.dropped_count - 1], &mut self.v[back - 1], 1);
-            back -= 1;
-            self.dropped_count -= 1;
         }
         true
     }
@@ -229,8 +239,8 @@ pub fn capped_dropmerge_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare:
         CappedDropMergeSort{
             v: v,
             c: compare,
-            read: 0,
-            write: 0,
+            read: 1,
+            write: 1,
             dropped: NoDrop::new(uninitialized()),
             dropped_count: 0,
             dropped_in_row: 0,
