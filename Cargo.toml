@@ -8,7 +8,7 @@ Also has (optional) support for efficient and robust sorting of floating point n
 keywords = ["sorting", "sort", "float"]
 license = "MIT / Apache-2.0"
 repository = "https://github.com/notriddle/quickersort"
-documentation = "https://www.notriddle.com/rustdoc/quickersort/index.html"
+documentation = "https://docs.rs/quickersort/2.2.0/quickersort/"
 readme = "README.md"
 
 [lib]
