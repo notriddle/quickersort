@@ -3,8 +3,66 @@
 // This file is licensed under the same terms as Rust itself.
 
 use super::sort::{sort_by};
-use num_traits::{Float};
 use unreachable::unreachable;
+
+/// Minimal trait required for sorting floats.
+pub trait Float: Copy + PartialOrd {
+    /// Returns `1.0`.
+    fn one() -> Self;
+
+    /// Returns `0.0`.
+    fn zero() -> Self;
+
+    /// Returns `-0.0`.
+    fn neg_zero() -> Self;
+
+    /// Returns `true` if this value is `NaN` and `false` otherwise.
+    fn is_nan(self) -> bool;
+
+    /// Returns `true` if this value is positive, including `-0.0` and `-inf`.
+    fn is_sign_negative(self) -> bool;
+}
+
+impl Float for f32 {
+    #[inline]
+    fn one() -> f32 { 1.0 }
+
+    #[inline]
+    fn zero() -> f32 { 0.0 }
+
+    #[inline]
+    fn neg_zero() -> f32 { -0.0 }
+
+    #[inline]
+    fn is_nan(self) -> bool {
+        self != self
+    }
+
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        self < 0.0 || (1.0 / self) == ::core::f32::NEG_INFINITY
+    }
+}
+
+impl Float for f64 {
+    #[inline]
+    fn one() -> f64 { 1.0 }
+
+    #[inline]
+    fn zero() -> f64 { 0.0 }
+
+    #[inline]
+    fn neg_zero() -> f64 { -0.0 }
+
+    #[inline]
+    fn is_nan(self) -> bool {
+        self != self
+    }
+    #[inline]
+    fn is_sign_negative(self) -> bool {
+        self < 0.0 || (1.0 / self) == ::core::f64::NEG_INFINITY
+    }
+}
 
 /// Sorts floating point number.
 /// The ordering used is

@@ -8,7 +8,6 @@ use core::cmp::{min, max};
 use core::mem::{size_of, swap};
 use core::ptr;
 use nodrop::NoDrop;
-use unreachable::UncheckedOptionExt;
 
 /// The smallest number of elements that may be quicksorted.
 /// Must be at least 9.
