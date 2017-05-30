@@ -15,7 +15,7 @@ To use with cargo, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-quickersort = "2.1.0"
+quickersort = "3.0"
 ```
 
 and in your crate root, add
