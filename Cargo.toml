@@ -1,14 +1,14 @@
 [package]
 name = "quickersort"
-version = "2.2.0"
-authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>" ]
+version = "3.0.0"
+authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>", "Vinzent Steinberg <Vinzent.Steinberg@gmail.com>" ]
 description = """
 Fast sorting compatible with stable Rust.
 Also has (optional) support for efficient and robust sorting of floating point numbers."""
 keywords = ["sorting", "sort", "float"]
 license = "MIT / Apache-2.0"
 repository = "https://github.com/notriddle/quickersort"
-documentation = "https://docs.rs/quickersort/2.2.0/quickersort/"
+documentation = "https://docs.rs/quickersort/3.0.0/quickersort/"
 readme = "README.md"
 
 [lib]
@@ -25,8 +25,6 @@ version = "0.1"
 default-features = false
 
 [features]
-default = [ "float" ]
-float = []
 unstable = [ "nodrop/use_union" ]
 assert_working_compare = []
 
