@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/notriddle/quickersort.svg)](https://travis-ci.org/notriddle/quickersort)
 [![Crates.IO](https://img.shields.io/crates/v/quickersort.svg)](https://crates.io/crates/quickersort)
 
-[Documentation](https://www.notriddle.com/rustdoc/quickersort/)
+[Documentation](https://docs.rs/quickersort)
 
 This is an implementation of the introsort sorting algorithm.
 
