@@ -1,10 +1,8 @@
 extern crate quickersort;
 extern crate rand;
 
-#[cfg(feature = "float")]
 extern crate num_traits;
 
-#[cfg(feature = "float")]
 mod bench {
 
 use std::f64;
