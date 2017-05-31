@@ -169,6 +169,9 @@ fn capped_insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C)
     true
 }
 
+/// Perform an insertion sort using a comparison function.
+///
+/// `sort` falls back to this for small partitions.
 pub fn insertion_sort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {
     let mut i = 1;
     let n = v.len();
@@ -365,6 +368,9 @@ unsafe fn swap_many<T>(v: &mut [T], a: usize, b: usize, n: usize) {
     }
 }
 
+/// Perform a heapsort using a comparison function.
+///
+/// `sort` falls back to this for pathological cases.
 #[cold]
 #[inline(never)]
 pub fn heapsort<T, C: Fn(&T, &T) -> Ordering>(v: &mut [T], compare: &C) {

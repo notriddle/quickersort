@@ -5,10 +5,11 @@
 
 [Documentation](https://docs.rs/quickersort)
 
-This is an implementation of the introsort sorting algorithm.
+This is an implementation of the [introsort] sorting algorithm.
 
 This is a fork of [veddan/rust-introsort], with a number of improvements.
 
+[introsort]: https://en.wikipedia.org/wiki/Introsort
 [veddan/rust-introsort]: https://github.com/veddan/rust-introsort
 
 To use with cargo, add the following to your `Cargo.toml`:
