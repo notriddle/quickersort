@@ -33,7 +33,7 @@ macro_rules! do_test_sort(
 
         let mut v = [0xDEADBEEFusize];
         $sortfun(&mut v[..], &cmp);
-        assert!(v == [0xDEADBEEF]);
+        assert_eq!(v, [0xDEADBEEF]);
     })
 );
 

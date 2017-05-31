@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "cargo-clippy", allow(float_cmp))]
+
 extern crate quickersort;
 extern crate rand;
 
@@ -83,10 +85,11 @@ fn assert_floats_sorted(v: &[f64]) {
         Some(i) => v.split_at(i),
         None    => (v, &[][..])
     };
-    assert!(not_nans.windows(2).all(|w| {
+    let is_ordered = |w: &[f64]| {
         let (a, b) = (w[0], w[1]);
         a < b || (a == b && !(b.is_sign_negative() && a.is_sign_positive()))
-    }));
+    };
+    assert!(not_nans.windows(2).all(is_ordered));
     assert!(nans.iter().all(|x| x.is_nan()));
 }
 

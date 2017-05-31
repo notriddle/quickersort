@@ -12,8 +12,8 @@ fn main() {
                       "worst-case", "performance"];
     quickersort::sort(&mut ss[..]);
     println!("alphabetically");
-    for s in ss.iter() { println!("\t{}", s); }
+    for s in &ss { println!("\t{}", s); }
     quickersort::sort_by(&mut ss[..], &|a, b| a.len().cmp(&b.len()));
     println!("\nby length");
-    for s in ss.iter() { println!("\t{}", s); }
+    for s in &ss { println!("\t{}", s); }
 }

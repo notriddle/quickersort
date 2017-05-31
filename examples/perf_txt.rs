@@ -83,7 +83,7 @@ fn generate_int(pattern: Pattern, variant: Variant, size: usize, m: usize) -> Ve
         Variant::Sorted => quickersort::sort(&mut ret_val),
         Variant::Dither => for x in &mut ret_val { let k = *x % 5; *x = k },
     }
-    return ret_val;
+    ret_val
 }
 
 fn run_test(algorithm: Algorithm, pattern: Pattern, variant: Variant, size: usize, m: usize) -> f64 {
