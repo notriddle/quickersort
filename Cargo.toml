@@ -31,7 +31,7 @@ assert_working_compare = []
 [dev-dependencies]
 num-traits = "0.1"
 rand = "0.4"
-itertools = "0.3.23"
+itertools = "0.7"
 
 [profile.test]
 opt-level = 1
