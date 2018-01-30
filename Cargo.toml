@@ -1,6 +1,6 @@
 [package]
 name = "quickersort"
-version = "3.0.0"
+version = "3.0.1"
 authors = [ "Viktor Dahl <pazaconyoman@gmail.com>", "Michael Howell <michael@notriddle.com>", "Vinzent Steinberg <Vinzent.Steinberg@gmail.com>" ]
 description = """
 Fast sorting compatible with stable Rust.
@@ -35,3 +35,6 @@ itertools = "0.7"
 
 [profile.test]
 opt-level = 1
+
+[badges]
+maintenance = { status = "deprecated" }
