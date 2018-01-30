@@ -1,3 +1,9 @@
+# Deprecated #
+
+There's really no point in using this library any more. Everything good about it has been incorporated into [std::sort_unstable] in the Rust standard library, which even uses a better algorithm. Just use that.
+
+[std::sort_unstable]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.sort_unstable
+
 # quickersort #
 
 [![Build Status](https://travis-ci.org/notriddle/quickersort.svg)](https://travis-ci.org/notriddle/quickersort)
